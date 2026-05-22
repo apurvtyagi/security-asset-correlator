@@ -1,0 +1,82 @@
+[
+  {
+    "_comment": "Qualys VMDR record — scanned 3 days ago. IP was 10.0.4.23 (ephemeral secondary NIC, since released). No instance_id (cloud connector not configured).",
+    "ID": "987654321",
+    "IP": "10.0.4.23",
+    "TRACKING_METHOD": "IP",
+    "DNS": "prod-api-07.internal",
+    "NETBIOS": "",
+    "OS": "Amazon Linux 2023 Kernel 6.1.94",
+    "LAST_SCAN_DATETIME": "2026-05-19T14:30:00Z",
+    "LAST_VM_SCANNED_DATE": "2026-05-19T14:30:00Z",
+    "ASSET_GROUP_IDS": "1234",
+    "TAGS": {
+      "TAG": [{ "ID": "5678", "NAME": "production" }]
+    },
+    "VULN_COUNT": 3,
+    "DETECTIONS": {
+      "DETECTION": [
+        {
+          "QID": 376211,
+          "TYPE": "Confirmed",
+          "SEVERITY": 5,
+          "CVSS3_BASE": 9.8,
+          "CVE_LIST": { "CVE": "CVE-2024-53907" },
+          "TITLE": "OpenSSL Remote Code Execution Vulnerability",
+          "FIRST_FOUND_DATETIME": "2026-04-11T08:00:00Z",
+          "LAST_FOUND_DATETIME": "2026-05-19T14:30:00Z",
+          "STATUS": "Active"
+        },
+        {
+          "QID": 378901,
+          "TYPE": "Confirmed",
+          "SEVERITY": 4,
+          "CVSS3_BASE": 7.5,
+          "CVE_LIST": { "CVE": "CVE-2024-47081" },
+          "TITLE": "curl/libcurl Improper Certificate Validation",
+          "FIRST_FOUND_DATETIME": "2026-03-02T10:00:00Z",
+          "LAST_FOUND_DATETIME": "2026-05-19T14:30:00Z",
+          "STATUS": "Active"
+        },
+        {
+          "QID": 380100,
+          "TYPE": "Potential",
+          "SEVERITY": 3,
+          "CVSS3_BASE": 5.9,
+          "CVE_LIST": { "CVE": "CVE-2025-10001" },
+          "TITLE": "Linux Kernel Information Disclosure",
+          "FIRST_FOUND_DATETIME": "2026-05-01T00:00:00Z",
+          "LAST_FOUND_DATETIME": "2026-05-19T14:30:00Z",
+          "STATUS": "Active"
+        }
+      ]
+    }
+  },
+  {
+    "_comment": "Qualys record for the database server — matches prod-db-01 via hostname",
+    "ID": "987654322",
+    "IP": "10.0.5.100",
+    "TRACKING_METHOD": "IP",
+    "DNS": "prod-db-01.internal",
+    "NETBIOS": "",
+    "OS": "Amazon Linux 2023",
+    "LAST_SCAN_DATETIME": "2026-05-19T15:00:00Z",
+    "TAGS": {
+      "TAG": [{ "ID": "5679", "NAME": "production" }]
+    },
+    "VULN_COUNT": 1,
+    "DETECTIONS": {
+      "DETECTION": {
+        "QID": 400201,
+        "TYPE": "Confirmed",
+        "SEVERITY": 4,
+        "CVSS3_BASE": 8.1,
+        "CVE_LIST": { "CVE": "CVE-2024-52302" },
+        "TITLE": "PostgreSQL Authentication Bypass",
+        "FIRST_FOUND_DATETIME": "2026-05-11T00:00:00Z",
+        "LAST_FOUND_DATETIME": "2026-05-19T15:00:00Z",
+        "STATUS": "Active"
+      }
+    }
+  }
+]

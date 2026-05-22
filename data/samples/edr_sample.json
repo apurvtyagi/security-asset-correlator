@@ -1,0 +1,41 @@
+[
+  {
+    "_comment": "CrowdStrike Falcon device record — same production API server as aws_sample",
+    "device_id": "a1b2c3d4e5f6789012345678901234ab",
+    "hostname": "prod-api-07",
+    "local_ip": "10.0.4.22",
+    "external_ip": "52.14.100.200",
+    "mac_address": "06:ab:cd:ef:01:23",
+    "os_version": "Amazon Linux 2023",
+    "platform_name": "Linux",
+    "instance_id": "i-0a1b2c3d4e5f67890",
+    "service_provider": "AWS_EC2",
+    "service_provider_account_id": "123456789012",
+    "status": "normal",
+    "last_seen": "2026-05-22T08:44:12Z",
+    "first_seen": "2025-11-15T09:25:41Z",
+    "tags": ["SensorGroupingTags/prod", "SensorGroupingTags/linux"],
+    "groups": ["prod-api-group"],
+    "kernel_version": "6.1.94-99.176.amzn2023.x86_64",
+    "agent_version": "7.12.16803.0",
+    "reduced_functionality_mode": "no"
+  },
+  {
+    "_comment": "CrowdStrike record for the database server — no public IP",
+    "device_id": "b2c3d4e5f6789012345678901234abc1",
+    "hostname": "prod-db-01",
+    "local_ip": "10.0.5.100",
+    "external_ip": "",
+    "mac_address": "06:bc:de:f0:12:34",
+    "os_version": "Amazon Linux 2023",
+    "platform_name": "Linux",
+    "instance_id": "i-0b2c3d4e5f6789012",
+    "service_provider": "AWS_EC2",
+    "service_provider_account_id": "123456789012",
+    "status": "normal",
+    "last_seen": "2026-05-22T07:30:00Z",
+    "first_seen": "2025-09-01T14:05:00Z",
+    "tags": ["SensorGroupingTags/prod", "SensorGroupingTags/database"],
+    "groups": ["prod-db-group"]
+  }
+]

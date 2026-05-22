@@ -35,6 +35,8 @@ canonical_fields:
           replacement: ""
         - pattern: "-dev$"
           replacement: ""
+        - pattern: "-staging$"
+          replacement: ""
     authority_rank:
       edr: 1          # EDR agent reports actual OS-level hostname
       aws: 2          # AWS SSM hostname is reliable
