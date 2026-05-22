@@ -1,0 +1,205 @@
+{
+  "_comment": "Sample raw asset data from three tools describing the SAME physical asset: a production API server.",
+  "_note": "Notice: different IPs (scan time vs current), hostname variants, and none sharing all identifiers.",
+
+  "aws_ec2": {
+    "_source": "AWS EC2 DescribeInstances API",
+    "InstanceId": "i-0a1b2c3d4e5f67890",
+    "InstanceType": "t3.large",
+    "PrivateIpAddress": "10.0.4.22",
+    "PublicIpAddress": "52.14.100.200",
+    "PrivateDnsName": "ip-10-0-4-22.us-east-1.compute.internal",
+    "PublicDnsName": "ec2-52-14-100-200.us-east-1.compute.amazonaws.com",
+    "State": { "Name": "running" },
+    "LaunchTime": "2025-11-15T09:23:00Z",
+    "Placement": { "AvailabilityZone": "us-east-1a" },
+    "OwnerId": "123456789012",
+    "Tags": [
+      { "Key": "Name", "Value": "prod-api-07" },
+      { "Key": "env", "Value": "production" },
+      { "Key": "team", "Value": "platform" },
+      { "Key": "app", "Value": "api-gateway" }
+    ],
+    "Platform": "",
+    "ImageId": "ami-0b5eea76982371e91",
+    "SubnetId": "subnet-0a1b2c3d",
+    "VpcId": "vpc-0deadbeef",
+    "SecurityGroups": [
+      { "GroupId": "sg-0a1b2c3d", "GroupName": "prod-api-sg" }
+    ]
+  },
+
+  "crowdstrike_edr": {
+    "_source": "CrowdStrike Falcon Host API /devices/entities/devices/v1",
+    "device_id": "a1b2c3d4e5f6789012345678901234ab",
+    "hostname": "prod-api-07",
+    "local_ip": "10.0.4.22",
+    "external_ip": "52.14.100.200",
+    "mac_address": "06:ab:cd:ef:01:23",
+    "os_version": "Amazon Linux 2023",
+    "platform_name": "Linux",
+    "instance_id": "i-0a1b2c3d4e5f67890",
+    "service_provider": "AWS_EC2",
+    "service_provider_account_id": "123456789012",
+    "status": "normal",
+    "last_seen": "2026-05-22T08:44:12Z",
+    "first_seen": "2025-11-15T09:25:41Z",
+    "tags": ["SensorGroupingTags/prod", "SensorGroupingTags/linux"],
+    "groups": ["prod-api-group"],
+    "kernel_version": "6.1.94-99.176.amzn2023.x86_64",
+    "agent_version": "7.12.16803.0",
+    "reduced_functionality_mode": "no"
+  },
+
+  "tenable_vulnerability_scanner": {
+    "_source": "Tenable.io Assets + Vulnerabilities API",
+    "_note": "Tenable scanned 6 hours ago. IP is same but no instanceId exposed at scan time.",
+    "id": "d8f7a2c1-1234-5678-abcd-ef9012345678",
+    "fqdn": ["prod-api-07.internal", "ip-10-0-4-22.us-east-1.compute.internal"],
+    "ipv4": ["10.0.4.22"],
+    "ipv6": [],
+    "operating_system": ["Amazon Linux 2023"],
+    "aws_ec2_instance_id": "i-0a1b2c3d4e5f67890",
+    "aws_region": "us-east-1",
+    "aws_availability_zone": "us-east-1a",
+    "aws_account_id": "123456789012",
+    "network_name": "default",
+    "last_scan_time": "2026-05-22T02:10:00Z",
+    "last_authenticated_scan_date": "2026-05-21T23:00:00Z",
+    "agent_name": [],
+    "tags": [{ "category": "env", "value": "production" }],
+    "vulnerabilities": [
+      {
+        "plugin_id": 207456,
+        "cve": ["CVE-2024-53907"],
+        "severity": "critical",
+        "cvss3_base_score": 9.8,
+        "plugin_name": "OpenSSL Remote Code Execution",
+        "first_found": "2026-04-10T12:00:00Z",
+        "last_found": "2026-05-22T02:10:00Z",
+        "state": "open"
+      },
+      {
+        "plugin_id": 198230,
+        "cve": ["CVE-2024-47081"],
+        "severity": "high",
+        "cvss3_base_score": 7.5,
+        "plugin_name": "curl/libcurl Improper Certificate Validation",
+        "first_found": "2026-03-01T08:00:00Z",
+        "last_found": "2026-05-22T02:10:00Z",
+        "state": "open"
+      }
+    ]
+  },
+
+  "qualys_vmdr": {
+    "_source": "Qualys VMDR API /api/2.0/fo/asset/host/",
+    "_note": "Qualys scanned 3 days ago via a different scanner appliance. IP was 10.0.4.23 at that time (ephemeral secondary NIC, since released). No instance_id in Qualys data.",
+    "ID": "987654321",
+    "IP": "10.0.4.23",
+    "TRACKING_METHOD": "IP",
+    "DNS": "prod-api-07.internal",
+    "NETBIOS": "",
+    "OS": "Amazon Linux 2023 Kernel 6.1.94",
+    "LAST_SCAN_DATETIME": "2026-05-19T14:30:00Z",
+    "LAST_VM_SCANNED_DATE": "2026-05-19T14:30:00Z",
+    "ASSET_GROUP_IDS": "1234",
+    "TAGS": { "TAG": [{ "ID": "5678", "NAME": "production" }] },
+    "VULN_COUNT": 3,
+    "DETECTIONS": {
+      "DETECTION": [
+        {
+          "QID": 376211,
+          "TYPE": "Confirmed",
+          "SEVERITY": 5,
+          "CVSS3_BASE": 9.8,
+          "CVE_LIST": { "CVE": "CVE-2024-53907" },
+          "TITLE": "OpenSSL Remote Code Execution Vulnerability",
+          "FIRST_FOUND_DATETIME": "2026-04-11T08:00:00Z",
+          "LAST_FOUND_DATETIME": "2026-05-19T14:30:00Z",
+          "STATUS": "Active"
+        },
+        {
+          "QID": 378901,
+          "TYPE": "Confirmed",
+          "SEVERITY": 4,
+          "CVSS3_BASE": 7.5,
+          "CVE_LIST": { "CVE": "CVE-2024-47081" },
+          "TITLE": "curl/libcurl Improper Certificate Validation",
+          "FIRST_FOUND_DATETIME": "2026-03-02T10:00:00Z",
+          "LAST_FOUND_DATETIME": "2026-05-19T14:30:00Z",
+          "STATUS": "Active"
+        },
+        {
+          "QID": 380100,
+          "TYPE": "Potential",
+          "SEVERITY": 3,
+          "CVSS3_BASE": 5.9,
+          "CVE_LIST": { "CVE": "CVE-2025-10001" },
+          "TITLE": "Linux Kernel Information Disclosure",
+          "FIRST_FOUND_DATETIME": "2026-05-01T00:00:00Z",
+          "LAST_FOUND_DATETIME": "2026-05-19T14:30:00Z",
+          "STATUS": "Active"
+        }
+      ]
+    }
+  },
+
+  "expected_canonical_output": {
+    "_comment": "What the correlator should produce for all three inputs above.",
+    "canonical_id": "c4f1a2b3-dead-beef-8765-4321abcdef01",
+    "instance_id": "i-0a1b2c3d4e5f67890",
+    "agent_id": "a1b2c3d4e5f6789012345678901234ab",
+    "hostname": "prod-api-07",
+    "ip_addresses": ["10.0.4.22", "10.0.4.23", "52.14.100.200"],
+    "mac_addresses": ["06:ab:cd:ef:01:23"],
+    "os_name": "Amazon Linux 2023",
+    "cloud_region": "us-east-1",
+    "cloud_account_id": "123456789012",
+    "asset_type": "server",
+    "tags": {
+      "aws:Name": "prod-api-07",
+      "aws:env": "production",
+      "aws:team": "platform",
+      "aws:app": "api-gateway",
+      "edr:SensorGroupingTags/prod": true
+    },
+    "last_seen": "2026-05-22T08:44:12Z",
+    "contributing_sources": ["aws", "edr", "tenable", "qualys"],
+    "conflicts": [
+      {
+        "field": "ip_addresses",
+        "note": "Qualys observed 10.0.4.23 (secondary NIC, stale); merged into IP list rather than replacing",
+        "resolution": "union_merged"
+      }
+    ],
+    "deduplicated_vulnerabilities": [
+      {
+        "cve_id": "CVE-2024-53907",
+        "severity": "critical",
+        "cvss3_base": 9.8,
+        "sources": ["tenable", "qualys"],
+        "first_found": "2026-04-10T12:00:00Z",
+        "status": "open"
+      },
+      {
+        "cve_id": "CVE-2024-47081",
+        "severity": "high",
+        "cvss3_base": 7.5,
+        "sources": ["tenable", "qualys"],
+        "first_found": "2026-03-01T08:00:00Z",
+        "status": "open"
+      },
+      {
+        "cve_id": "CVE-2025-10001",
+        "severity": "medium",
+        "cvss3_base": 5.9,
+        "sources": ["qualys"],
+        "first_found": "2026-05-01T00:00:00Z",
+        "status": "potential"
+      }
+    ],
+    "total_unique_cves": 3,
+    "total_raw_findings_before_dedup": 5
+  }
+}

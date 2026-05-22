@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.venv/
+venv/
+*.log
+.DS_Store
+*.json.local
+canonical_assets.json
+dist/
+build/
+.pytest_cache/

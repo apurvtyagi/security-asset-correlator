@@ -1,0 +1,189 @@
+# canonical_mapping.yaml
+# Field mapping rules: how each source's fields map to canonical asset fields.
+# "authority_rank" controls conflict resolution — lower number wins.
+# "staleness_ttl_hours" defines how long a field value is considered fresh.
+
+version: "1.0"
+
+canonical_fields:
+  canonical_id:
+    description: "Internal stable identifier for the canonical asset"
+    type: string
+    generated: true
+
+  instance_id:
+    description: "Cloud provider instance identifier"
+    type: string
+    authority_rank:
+      aws: 1
+      azure: 1
+      gcp: 1
+      edr: 5        # EDR may observe instanceId but is not authoritative
+      tenable: 10
+      qualys: 10
+    staleness_ttl_hours: 8760  # instance IDs don't change
+
+  hostname:
+    description: "Primary hostname (normalized, lowercase, stripped suffixes)"
+    type: string
+    normalization:
+      lowercase: true
+      strip_suffixes: [".local", ".internal", ".corp", ".lan"]
+      strip_prefixes: []
+      replace_patterns:
+        - pattern: "-prod$"
+          replacement: ""
+        - pattern: "-dev$"
+          replacement: ""
+    authority_rank:
+      edr: 1          # EDR agent reports actual OS-level hostname
+      aws: 2          # AWS SSM hostname is reliable
+      tenable: 4      # Scanner may get hostname from reverse DNS
+      qualys: 4
+      cmdb: 6         # CMDB often stale
+    staleness_ttl_hours: 168  # 7 days
+
+  ip_addresses:
+    description: "All known IPs for this asset (list, can be multi-NIC)"
+    type: list[string]
+    staleness_ttl_hours: 4    # IPs drift; weight recent scans higher
+    merge_strategy: union     # Combine from all sources, deduplicate
+    authority_rank:
+      aws: 1
+      edr: 2
+      tenable: 3
+      qualys: 3
+
+  mac_addresses:
+    description: "Hardware MAC addresses"
+    type: list[string]
+    authority_rank:
+      edr: 1
+      aws: 2
+      tenable: 5
+      qualys: 5
+    staleness_ttl_hours: 8760
+
+  os_name:
+    description: "Operating system name (normalized)"
+    type: string
+    authority_rank:
+      edr: 1
+      aws: 2
+      tenable: 3
+      qualys: 3
+    staleness_ttl_hours: 720  # 30 days
+
+  os_version:
+    description: "OS version string"
+    type: string
+    authority_rank:
+      edr: 1
+      aws: 3
+      tenable: 2
+      qualys: 2
+    staleness_ttl_hours: 168
+
+  cloud_region:
+    description: "Cloud region (aws: us-east-1, azure: eastus, etc.)"
+    type: string
+    authority_rank:
+      aws: 1
+      azure: 1
+      gcp: 1
+      edr: 8
+      tenable: 10
+    staleness_ttl_hours: 8760
+
+  cloud_account_id:
+    description: "Cloud account / subscription ID"
+    type: string
+    authority_rank:
+      aws: 1
+      azure: 1
+      gcp: 1
+    staleness_ttl_hours: 8760
+
+  tags:
+    description: "Key-value tags from cloud provider and CMDB"
+    type: dict
+    merge_strategy: union_with_source_prefix  # aws:env=prod, edr:group=servers
+    authority_rank:
+      aws: 1
+      azure: 1
+      cmdb: 2
+      edr: 5
+
+  agent_id:
+    description: "EDR or management agent UUID"
+    type: string
+    authority_rank:
+      edr: 1
+    staleness_ttl_hours: 8760
+
+  last_seen:
+    description: "Most recent confirmed observation timestamp"
+    type: datetime
+    merge_strategy: max  # Take the most recent across all sources
+
+  asset_type:
+    description: "Normalized asset type (server, container, network_device, workstation)"
+    type: string
+    allowed_values: [server, container, workstation, network_device, cloud_function, unknown]
+    authority_rank:
+      aws: 1
+      edr: 2
+      tenable: 4
+      qualys: 4
+
+
+# Source field mappings: raw field names → canonical field names
+source_mappings:
+
+  aws:
+    raw_fields:
+      InstanceId: instance_id
+      PrivateIpAddress: ip_addresses
+      PublicIpAddress: ip_addresses
+      PrivateDnsName: hostname
+      Region: cloud_region
+      OwnerId: cloud_account_id
+      Tags: tags
+      Platform: os_name
+      LaunchTime: last_seen
+    asset_type_override: server
+
+  edr:
+    # Applies to CrowdStrike, SentinelOne, Carbon Black
+    raw_fields:
+      device_id: agent_id
+      hostname: hostname
+      local_ip: ip_addresses
+      external_ip: ip_addresses
+      mac_address: mac_addresses
+      os_version: os_name
+      instance_id: instance_id      # CrowdStrike exposes cloud instance ID
+      last_seen: last_seen
+      tags: tags
+    asset_type_override: null  # Infer from OS
+
+  tenable:
+    raw_fields:
+      id: null                       # Tenable's internal ID — not used as canonical
+      fqdn: hostname
+      ipv4: ip_addresses
+      operating_system: os_name
+      aws_ec2_instance_id: instance_id
+      aws_region: cloud_region
+      last_scan_time: last_seen
+    asset_type_override: null
+
+  qualys:
+    raw_fields:
+      ID: null                       # Qualys internal — not canonical
+      DNS: hostname
+      IP: ip_addresses
+      OS: os_name
+      EC2_INSTANCE_ID: instance_id
+      LAST_SCAN_DATETIME: last_seen
+    asset_type_override: null
