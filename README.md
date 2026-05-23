@@ -102,12 +102,14 @@ Builds a **canonical asset graph** — one record per real-world entity — by:
 ```
 security-asset-correlator/
 ├── README.md
+├── pyproject.toml
 ├── requirements.txt
 ├── docker-compose.yml
 ├── config/
-│   ├── canonical_mapping.yaml       # Field mapping rules + authority ranks per source
-│   ├── source_confidence.yaml       # Source trust weights per field type
-│   └── match_thresholds.yaml        # Tunable merge/flag/layer score thresholds
+│   ├── source_mappings.yaml         # ★ Field mappings for every source tool (YAML, no Python)
+│   ├── canonical_mapping.yaml       # Authority ranks + staleness TTL per field
+│   ├── source_confidence.yaml       # Per-source and per-field trust weights
+│   └── match_thresholds.yaml        # Merge/flag thresholds + layer score weights
 ├── src/
 │   ├── correlator/
 │   │   ├── models.py                # Shared data models (RawAssetRecord, CanonicalAsset, etc.)
@@ -116,10 +118,12 @@ security-asset-correlator/
 │   │   ├── merger.py                # Canonical record construction
 │   │   └── conflict_resolver.py     # Field conflict resolution + audit log
 │   ├── loaders/
-│   │   ├── aws_loader.py            # AWS EC2/SSM inventory ingestion
-│   │   ├── edr_loader.py            # CrowdStrike/SentinelOne loader
-│   │   ├── tenable_loader.py        # Tenable.io asset + vuln loader
-│   │   └── qualys_loader.py         # Qualys VMDR loader
+│   │   ├── base_loader.py           # BaseLoader ABC + LoaderRegistry (auto-discovers YAML sources)
+│   │   └── generic_loader.py        # ★ Config-driven loader engine + transform functions
+│   ├── store/
+│   │   ├── base.py                  # AssetStore interface
+│   │   ├── memory.py                # InMemoryStore with O(1) hard-ID indexes (default)
+│   │   └── sql.py                   # SQLiteStore + PostgreSQLStore (SQLAlchemy 2.0)
 │   ├── resolvers/
 │   │   ├── hostname_resolver.py     # Hostname normalization + generic detection
 │   │   ├── ip_resolver.py           # IP staleness decay + multi-NIC handling
@@ -128,14 +132,14 @@ security-asset-correlator/
 │       ├── main.py                  # FastAPI entrypoint
 │       └── routes/
 │           ├── assets.py            # Canonical asset endpoints
-│           └── vulnerabilities.py   # Deduplicated vuln endpoints
+│           ├── vulnerabilities.py   # Deduplicated vuln endpoints
+│           └── coverage.py          # Coverage gap analysis endpoints
 ├── data/
 │   └── samples/
-│       ├── aws_sample.json          # Sample AWS EC2 asset data
-│       ├── edr_sample.json          # Sample CrowdStrike device data
-│       ├── tenable_sample.json      # Sample Tenable findings
-│       ├── qualys_sample.json       # Sample Qualys VMDR detections
-│       └── multi_source_sample.json # Same host as seen by all 4 tools
+│       ├── aws_sample.json
+│       ├── edr_sample.json
+│       ├── tenable_sample.json
+│       └── qualys_sample.json
 ├── tests/
 │   ├── test_matcher.py              # 4-layer matching + confidence scoring
 │   ├── test_merger.py               # Record merge + vuln deduplication
@@ -216,13 +220,92 @@ pytest tests/
 
 ---
 
+## Adding a new security tool
+
+The loader layer is fully config-driven. Adding support for a new tool — Lacework, Wiz, Microsoft Defender, Prisma Cloud, or anything else — takes two steps and no new Python files.
+
+**Step 1 — Add a block to `config/source_mappings.yaml`**
+
+```yaml
+# Microsoft Defender for Endpoint example
+mde:
+  source_id_field: id          # which field in the API response is the unique ID
+  asset_type: workstation
+  fields:
+    agent_id: id
+    hostnames:
+      pick: [computerDnsName]
+    ip_addresses:
+      field: lastIpAddress
+      transform: ensure_list   # built-in: wraps scalar or list → list
+    os_name: osPlatform
+    os_version: osVersion
+    last_seen:
+      field: lastSeen
+      transform: iso_datetime  # built-in: ISO 8601 string → datetime
+```
+
+That's it for most tools. The engine auto-discovers it:
+
+```python
+from src.loaders.base_loader import LoaderRegistry
+
+loader = LoaderRegistry.get("mde")          # works immediately
+records = loader.load(raw_api_response)     # returns [RawAssetRecord, ...]
+```
+
+**Step 2 (only if the tool has an unusual data shape) — add a `@transform` function**
+
+For example, if your tool returns tags as `[{"k": "env", "v": "prod"}]` instead of the common formats:
+
+```python
+# src/loaders/generic_loader.py — add alongside the other transforms
+@transform("mytool_tags")
+def _mytool_tags(value: Any) -> dict:
+    if not isinstance(value, list):
+        return {}
+    return {entry["k"]: entry["v"] for entry in value if "k" in entry}
+```
+
+Then reference it by name in the YAML:
+
+```yaml
+mytool:
+  fields:
+    tags:
+      field: asset_tags
+      transform: mytool_tags
+```
+
+**Built-in transforms** (no custom code needed for these common patterns):
+
+| Transform | Input | Output |
+|---|---|---|
+| `iso_datetime` | ISO 8601 string | `datetime` |
+| `ensure_list` | scalar or list | `list` |
+| `first_of_list` | list | first non-empty element |
+| `dedup_list` | list | deduplicated list |
+| `aws_platform_to_os` | `"windows"` / `""` | `"Windows"` / `"Linux"` |
+| `az_to_region` | `"us-east-1a"` | `"us-east-1"` |
+| `aws_tags_list` | `[{Key, Value}]` | `{key: value}` |
+| `mac_to_list` | single MAC string | `["aa:bb:cc:dd:ee:ff"]` |
+| `edr_tags` | list of strings or dict | `{str: True}` or passthrough |
+| `tenable_tags` | `[{category, value}]` | `{category: value}` |
+| `tenable_vulns` | Tenable findings array | `[VulnerabilityFinding]` |
+| `qualys_vulns` | Qualys `DETECTIONS` dict | `[VulnerabilityFinding]` |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a full walkthrough.
+
+---
+
 ## Configuration
 
 All thresholds and authority rankings are in `config/` — no hardcoded values in the matching or merge logic.
 
 | File | Controls |
 |------|----------|
-| `canonical_mapping.yaml` | Field mappings per source, authority ranks, staleness TTL |
+| `source_mappings.yaml` | Field mappings for every source tool — edit to add new tools |
+| `canonical_mapping.yaml` | Authority ranks per field per source, staleness TTL |
 | `source_confidence.yaml` | Per-source and per-field trust weights |
 | `match_thresholds.yaml` | Merge/flag thresholds, layer scores, combination weights |
 
