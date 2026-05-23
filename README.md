@@ -1,5 +1,11 @@
 # security-asset-correlator
 
+[![CI](https://github.com/apurvtyagi/security-asset-correlator/actions/workflows/ci.yml/badge.svg)](https://github.com/apurvtyagi/security-asset-correlator/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/security-asset-correlator)](https://pypi.org/project/security-asset-correlator/)
+[![Python](https://img.shields.io/pypi/pyversions/security-asset-correlator)](https://pypi.org/project/security-asset-correlator/)
+[![codecov](https://codecov.io/gh/apurvtyagi/security-asset-correlator/branch/main/graph/badge.svg)](https://codecov.io/gh/apurvtyagi/security-asset-correlator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > Cross-tool canonical asset correlation engine for security operations.
 
 Most security programs don't have a vulnerability problem. They have an asset identity problem. The same EC2 instance appears as four distinct records across your cloud inventory, EDR platform, and vulnerability scanners — each with different findings attached. This project is the glue layer that shouldn't have to exist but usually does.
@@ -143,13 +149,19 @@ security-asset-correlator/
 
 ## Quick Start
 
-**Local**
+**Install from PyPI**
+
+```bash
+pip install security-asset-correlator
+```
+
+**Local (development)**
 
 ```bash
 git clone https://github.com/apurvtyagi/security-asset-correlator
 cd security-asset-correlator
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # Run correlation against sample data
 python -m src.correlator.engine --sources data/samples/ --output canonical_assets.json
@@ -181,6 +193,10 @@ docker-compose up
 | `GET` | `/api/v1/vulnerabilities/` | Deduplicated findings (filter by severity, CVE, source) |
 | `GET` | `/api/v1/vulnerabilities/by-asset/{id}` | Findings for one canonical asset |
 | `GET` | `/api/v1/vulnerabilities/summary` | Aggregate stats and top CVEs |
+| `GET` | `/api/v1/coverage/` | Full coverage gap report |
+| `GET` | `/api/v1/coverage/no-edr` | Assets without EDR agent coverage |
+| `GET` | `/api/v1/coverage/no-scanner` | Assets never scanned for vulnerabilities |
+| `GET` | `/api/v1/coverage/shadow-it` | Possible unmanaged / shadow-IT devices |
 
 ---
 
@@ -224,9 +240,66 @@ To adjust who wins a hostname conflict between EDR and AWS, change `canonical_fi
 
 ---
 
+## Storage backends
+
+The engine uses a pluggable `AssetStore` interface with two built-in backends:
+
+| Backend | When to use |
+|---------|-------------|
+| `InMemoryStore` (default) | Single-process, ephemeral, tests |
+| `SQLiteStore` | Single-server persistent deployments |
+| `PostgreSQLStore` | Multi-instance / high-availability |
+
+```python
+from src.correlator.engine import CorrelationEngine
+from src.store.sql import SQLiteStore
+
+store = SQLiteStore("sqlite:///assets.db")
+store.init_schema()
+engine = CorrelationEngine(store=store)
+```
+
+For PostgreSQL, install the extra and pass a `postgresql://` URL:
+
+```bash
+pip install security-asset-correlator[postgres]
+```
+
+```python
+from src.store.sql import PostgreSQLStore
+store = PostgreSQLStore("postgresql://user:pass@host/dbname")
+```
+
+---
+
+## Coverage gap analysis
+
+After ingesting records, call the coverage report to find blind spots:
+
+```bash
+GET /api/v1/coverage/
+```
+
+```json
+{
+  "total_assets": 142,
+  "no_edr":     { "count": 18, "canonical_ids": ["..."] },
+  "no_scanner": { "count": 9,  "canonical_ids": ["..."] },
+  "shadow_it":  { "count": 3,  "canonical_ids": ["..."] }
+}
+```
+
+- **no_edr** — assets not enrolled in any endpoint agent (CrowdStrike, SentinelOne)
+- **no_scanner** — assets that have never been scanned by Tenable or Qualys
+- **shadow_it** — assets seen only by scanners with no cloud inventory or EDR record — possible unmanaged devices
+
+---
+
 ## Contributing
 
-PRs welcome. Issues for new source loaders, edge case coverage, and confidence model improvements especially appreciated.
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide, including how to add a new source loader in ~30 minutes.
+
+Issues for new source loaders, edge case coverage, and confidence model improvements especially appreciated.
 
 ---
 

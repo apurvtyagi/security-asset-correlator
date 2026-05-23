@@ -1,0 +1,60 @@
+name: New Source Loader Request
+description: Request or propose a loader for a new security tool
+labels: [loader, enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Each loader is ~80 lines. See `CONTRIBUTING.md` for the step-by-step guide
+        and `src/loaders/base_loader.py` for the interface to implement.
+
+  - type: input
+    id: tool
+    attributes:
+      label: Tool / source name
+      placeholder: "e.g. Microsoft Defender for Endpoint, Wiz, Lacework"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: api
+    attributes:
+      label: Does this tool have a documented public API?
+      options:
+        - "Yes — link in description below"
+        - "Yes — but auth is complex (SAML/OAuth)"
+        - "No — export only (CSV / JSON file)"
+        - "Unknown"
+    validations:
+      required: true
+
+  - type: textarea
+    id: fields
+    attributes:
+      label: Key fields the tool exposes
+      description: |
+        List the fields that map to canonical asset identifiers.
+        The more of these a tool exposes, the higher-confidence matches it enables.
+      placeholder: |
+        - device_id (maps to agent_id)
+        - hostname
+        - ip_address
+        - os_version
+        - azure_vm_id (maps to instance_id)
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample API response (anonymised)
+      description: Paste a representative JSON record from the tool's API.
+      render: json
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to implement this loader
+        - label: I can provide test fixtures (anonymised sample data)

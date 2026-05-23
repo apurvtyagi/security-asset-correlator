@@ -30,6 +30,8 @@ from .merger import RecordMerger
 from .models import CanonicalAsset, RawAssetRecord
 from ..resolvers.hostname_resolver import HostnameResolver
 from ..resolvers.ip_resolver import IPResolver
+from ..store.base import AssetStore
+from ..store.memory import InMemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +71,11 @@ class CorrelationEngine:
     ingestion of records from different sources.
     """
 
-    def __init__(self, config_dir: Path = _CONFIG_DIR):
+    def __init__(
+        self,
+        config_dir: Path = _CONFIG_DIR,
+        store: Optional[AssetStore] = None,
+    ):
         configs = load_config(config_dir)
 
         thresholds_cfg = configs.get("match_thresholds", {})
@@ -99,8 +105,17 @@ class CorrelationEngine:
         self.merge_threshold: float = thresholds["merge_threshold"]
         self.flag_threshold: float = thresholds["flag_threshold"]
 
-        self.canonical_store: list[CanonicalAsset] = []
-        self.flagged_for_review: list[dict] = []
+        self._store: AssetStore = store if store is not None else InMemoryStore()
+
+    @property
+    def canonical_store(self) -> list[CanonicalAsset]:
+        """Backward-compatible list view of the asset store."""
+        return self._store.get_all()
+
+    @property
+    def flagged_for_review(self) -> list[dict]:
+        """Backward-compatible list view of the review queue."""
+        return self._store.get_flagged()
 
     def process(self, records: list[RawAssetRecord]) -> list[CanonicalAsset]:
         """
@@ -121,11 +136,12 @@ class CorrelationEngine:
                     canonical.canonical_id, match_result.match_layer,
                 )
                 self.merger.merge(canonical, record)
+                self._store.save(canonical)
 
             elif match_result and match_result.confidence >= self.flag_threshold:
                 new = self._create_canonical(record, match_result.confidence)
-                self.canonical_store.append(new)
-                self.flagged_for_review.append({
+                self._store.save(new)
+                self._store.add_flagged({
                     "new_canonical_id": new.canonical_id,
                     "possible_duplicate_of": canonical.canonical_id,
                     "confidence": match_result.confidence,
@@ -141,17 +157,58 @@ class CorrelationEngine:
 
             else:
                 new = self._create_canonical(record, 1.0)
-                self.canonical_store.append(new)
+                self._store.save(new)
                 logger.debug(
                     "NEW canonical:%s from %s:%s",
                     new.canonical_id, record.source, record.source_id,
                 )
 
+        all_assets = self._store.get_all()
+        flagged = self._store.get_flagged()
         logger.info(
             "Correlation complete. Canonical assets: %d, Flagged for review: %d",
-            len(self.canonical_store), len(self.flagged_for_review),
+            len(all_assets), len(flagged),
         )
-        return self.canonical_store
+        return all_assets
+
+    def coverage_gaps(self) -> dict:
+        """
+        Analyse the canonical store for asset coverage gaps.
+
+        Returns three categories:
+          no_edr        — assets with no EDR source record (no EDR coverage)
+          no_scanner    — assets with no scanner (tenable/qualys) source record
+          shadow_it     — assets seen only by scanners, not by cloud inventory or EDR
+                          (possible unmanaged / shadow-IT devices)
+        """
+        all_assets = self._store.get_all()
+        no_edr = []
+        no_scanner = []
+        shadow_it = []
+
+        edr_sources = {"edr", "crowdstrike", "sentinelone"}
+        scanner_sources = {"tenable", "qualys", "nessus"}
+        cloud_sources = {"aws", "azure", "gcp"}
+
+        for asset in all_assets:
+            sources = set(asset.contributing_sources)
+            has_edr = bool(sources & edr_sources)
+            has_scanner = bool(sources & scanner_sources)
+            has_cloud = bool(sources & cloud_sources)
+
+            if not has_edr:
+                no_edr.append(asset.canonical_id)
+            if not has_scanner:
+                no_scanner.append(asset.canonical_id)
+            if has_scanner and not has_edr and not has_cloud:
+                shadow_it.append(asset.canonical_id)
+
+        return {
+            "total_assets": len(all_assets),
+            "no_edr": {"count": len(no_edr), "canonical_ids": no_edr},
+            "no_scanner": {"count": len(no_scanner), "canonical_ids": no_scanner},
+            "shadow_it": {"count": len(shadow_it), "canonical_ids": shadow_it},
+        }
 
     def _create_canonical(
         self, record: RawAssetRecord, confidence: float
@@ -226,28 +283,27 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    from ..loaders.aws_loader import AWSLoader
-    from ..loaders.edr_loader import EDRLoader
-    from ..loaders.tenable_loader import TenableLoader
-    from ..loaders.qualys_loader import QualysLoader
+    from ..loaders.base_loader import LoaderRegistry
 
-    loaders = {
-        "aws_sample.json": AWSLoader(),
-        "edr_sample.json": EDRLoader(),
-        "tenable_sample.json": TenableLoader(),
-        "qualys_sample.json": QualysLoader(),
+    # Map sample filenames to source names; extend this dict to add more sources
+    source_files = {
+        "aws_sample.json": "aws",
+        "edr_sample.json": "edr",
+        "tenable_sample.json": "tenable",
+        "qualys_sample.json": "qualys",
     }
 
     sources_dir = Path(args.sources)
     records: list[RawAssetRecord] = []
-    for filename, loader in loaders.items():
+    for filename, source in source_files.items():
         path = sources_dir / filename
         if path.exists():
+            loader = LoaderRegistry.get(source)
             with open(path) as fh:
                 raw = json.load(fh)
             loaded = loader.load(raw if isinstance(raw, list) else [raw])
             records.extend(loaded)
-            logger.info("Loaded %d records from %s", len(loaded), filename)
+            logger.info("Loaded %d records from %s via %s", len(loaded), filename, source)
         else:
             logger.debug("Sample file not found (skipped): %s", path)
 

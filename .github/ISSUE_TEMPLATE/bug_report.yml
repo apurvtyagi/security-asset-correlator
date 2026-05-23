@@ -1,0 +1,51 @@
+name: Bug Report
+description: Something is broken or producing wrong results
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill in as much as possible.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Matching (wrong confidence score / false merge)
+        - Merger (wrong field value / conflict resolution)
+        - Loader (parsing error from a source)
+        - API (endpoint error)
+        - Config (YAML parsing / threshold issue)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug and the expected behaviour.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: |
+        Paste the raw asset records (anonymised) and the engine call that triggers the bug.
+        Wrap JSON in ```json fences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      value: |
+        - Python version:
+        - Package version (`pip show security-asset-correlator`):
+        - OS:
+    validations:
+      required: true
