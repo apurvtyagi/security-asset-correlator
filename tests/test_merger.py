@@ -8,17 +8,17 @@ and cross-source CVE deduplication.
 
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+import pytest
+
+from src.correlator.merger import RecordMerger
 from src.correlator.models import (
     CanonicalAsset,
     CanonicalVulnerability,
     RawAssetRecord,
     VulnerabilityFinding,
 )
-from src.correlator.merger import RecordMerger
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -215,28 +215,28 @@ class TestTagMerge:
 class TestLastSeenMerge:
     def test_newer_last_seen_replaces_older(self, merger):
         canonical = _aws_canonical()
-        canonical.last_seen = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        canonical.last_seen = datetime(2026, 1, 1, tzinfo=UTC)
         record = RawAssetRecord(
             source="edr", source_id="edr-008",
-            last_seen=datetime(2026, 6, 1, tzinfo=timezone.utc),
+            last_seen=datetime(2026, 6, 1, tzinfo=UTC),
         )
         result = merger.merge(canonical, record)
-        assert result.last_seen == datetime(2026, 6, 1, tzinfo=timezone.utc)
+        assert result.last_seen == datetime(2026, 6, 1, tzinfo=UTC)
 
     def test_older_last_seen_does_not_replace_newer(self, merger):
         canonical = _aws_canonical()
-        canonical.last_seen = datetime(2026, 6, 1, tzinfo=timezone.utc)
+        canonical.last_seen = datetime(2026, 6, 1, tzinfo=UTC)
         record = RawAssetRecord(
             source="qualys", source_id="q-004",
-            last_seen=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            last_seen=datetime(2026, 1, 1, tzinfo=UTC),
         )
         result = merger.merge(canonical, record)
-        assert result.last_seen == datetime(2026, 6, 1, tzinfo=timezone.utc)
+        assert result.last_seen == datetime(2026, 6, 1, tzinfo=UTC)
 
     def test_none_last_seen_filled_from_incoming(self, merger):
         canonical = _aws_canonical()
         canonical.last_seen = None
-        ts = datetime(2026, 5, 22, tzinfo=timezone.utc)
+        ts = datetime(2026, 5, 22, tzinfo=UTC)
         record = RawAssetRecord(source="edr", source_id="edr-009", last_seen=ts)
         merger.merge(canonical, record)
         assert canonical.last_seen == ts
@@ -270,8 +270,8 @@ class TestVulnerabilityDeduplication:
             CanonicalVulnerability(
                 cve_id="CVE-2024-53907", severity="critical", cvss3_base=9.8,
                 sources=["tenable"],
-                first_found=datetime(2026, 4, 10, tzinfo=timezone.utc),
-                last_found=datetime(2026, 5, 22, tzinfo=timezone.utc),
+                first_found=datetime(2026, 4, 10, tzinfo=UTC),
+                last_found=datetime(2026, 5, 22, tzinfo=UTC),
                 raw_finding_count=1,
             )
         ]
@@ -282,8 +282,8 @@ class TestVulnerabilityDeduplication:
                     source="qualys", source_finding_id="qid-376211",
                     cve_ids=["CVE-2024-53907"],
                     severity="critical", cvss3_base=9.8,
-                    first_found=datetime(2026, 4, 11, tzinfo=timezone.utc),
-                    last_found=datetime(2026, 5, 19, tzinfo=timezone.utc),
+                    first_found=datetime(2026, 4, 11, tzinfo=UTC),
+                    last_found=datetime(2026, 5, 19, tzinfo=UTC),
                     status="open",
                 )
             ],
@@ -319,7 +319,7 @@ class TestVulnerabilityDeduplication:
         canonical.vulnerabilities = [
             CanonicalVulnerability(
                 cve_id="CVE-2024-47081", sources=["tenable"],
-                first_found=datetime(2026, 4, 10, tzinfo=timezone.utc),
+                first_found=datetime(2026, 4, 10, tzinfo=UTC),
                 raw_finding_count=1,
             )
         ]
@@ -330,13 +330,13 @@ class TestVulnerabilityDeduplication:
                     source="qualys", source_finding_id="qid-378901",
                     cve_ids=["CVE-2024-47081"],
                     # Earlier than the tenable date
-                    first_found=datetime(2026, 3, 1, tzinfo=timezone.utc),
+                    first_found=datetime(2026, 3, 1, tzinfo=UTC),
                 )
             ],
         )
         merger.merge(canonical, record)
         vuln = next(v for v in canonical.vulnerabilities if v.cve_id == "CVE-2024-47081")
-        assert vuln.first_found == datetime(2026, 3, 1, tzinfo=timezone.utc)
+        assert vuln.first_found == datetime(2026, 3, 1, tzinfo=UTC)
 
     def test_open_status_overrides_potential(self, merger):
         canonical = _aws_canonical()

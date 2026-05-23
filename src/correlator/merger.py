@@ -14,7 +14,7 @@ Merge strategies by field type:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .conflict_resolver import ConflictResolver
 from .models import (
@@ -104,7 +104,7 @@ class RecordMerger:
         if record.vulnerabilities:
             self._merge_vulnerabilities(canonical, record.vulnerabilities)
 
-        canonical.updated_at = datetime.now(timezone.utc)
+        canonical.updated_at = datetime.now(UTC)
         return canonical
 
     def _merge_vulnerabilities(

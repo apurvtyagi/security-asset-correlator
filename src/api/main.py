@@ -27,7 +27,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..correlator.engine import CorrelationEngine
-from .routes import assets, vulnerabilities, coverage
+from .routes import assets, coverage, vulnerabilities
 
 logger = logging.getLogger(__name__)
 

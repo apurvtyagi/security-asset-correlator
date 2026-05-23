@@ -8,8 +8,6 @@ and tests. State is lost on process restart.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ..correlator.models import CanonicalAsset
 from .base import AssetStore
 
@@ -38,7 +36,7 @@ class InMemoryStore(AssetStore):
         if asset.agent_id:
             self._by_agent_id[asset.agent_id] = asset.canonical_id
 
-    def get(self, canonical_id: str) -> Optional[CanonicalAsset]:
+    def get(self, canonical_id: str) -> CanonicalAsset | None:
         return self._assets.get(canonical_id)
 
     def get_all(self) -> list[CanonicalAsset]:
@@ -53,10 +51,10 @@ class InMemoryStore(AssetStore):
     def get_flagged(self) -> list[dict]:
         return list(self._flagged)
 
-    def find_by_instance_id(self, instance_id: str) -> Optional[CanonicalAsset]:
+    def find_by_instance_id(self, instance_id: str) -> CanonicalAsset | None:
         cid = self._by_instance_id.get(instance_id)
         return self._assets.get(cid) if cid else None
 
-    def find_by_agent_id(self, agent_id: str) -> Optional[CanonicalAsset]:
+    def find_by_agent_id(self, agent_id: str) -> CanonicalAsset | None:
         cid = self._by_agent_id.get(agent_id)
         return self._assets.get(cid) if cid else None

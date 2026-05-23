@@ -19,9 +19,10 @@ Architecture:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 import yaml
 
@@ -66,11 +67,11 @@ def _apply(name: str, value: Any, source: str = "") -> Any:
 # ---------------------------------------------------------------------------
 
 @transform("iso_datetime")
-def _iso_datetime(value: Any) -> Optional[datetime]:
+def _iso_datetime(value: Any) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value).rstrip("Z")).replace(tzinfo=timezone.utc)
+        return datetime.fromisoformat(str(value).rstrip("Z")).replace(tzinfo=UTC)
     except (ValueError, AttributeError):
         return None
 
@@ -85,7 +86,7 @@ def _ensure_list(value: Any) -> list:
 
 
 @transform("first_of_list")
-def _first_of_list(value: Any) -> Optional[str]:
+def _first_of_list(value: Any) -> str | None:
     if isinstance(value, list):
         return next((s for s in value if s), None)
     return value if value else None
@@ -115,7 +116,7 @@ def _aws_platform(value: Any) -> str:
 
 
 @transform("az_to_region")
-def _az_to_region(value: Any) -> Optional[str]:
+def _az_to_region(value: Any) -> str | None:
     """Strip trailing AZ letter: 'us-east-1a' → 'us-east-1'."""
     if not value:
         return None
@@ -329,7 +330,7 @@ class GenericLoader(BaseLoader):
         cls,
         source: str,
         mappings_file: Path = _DEFAULT_MAPPINGS,
-    ) -> "GenericLoader":
+    ) -> GenericLoader:
         """Load the mapping for ``source`` from the YAML config file."""
         with open(mappings_file) as fh:
             config = yaml.safe_load(fh)

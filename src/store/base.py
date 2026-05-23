@@ -9,7 +9,6 @@ any engine or API code — only the store implementation changes.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from ..correlator.models import CanonicalAsset
 
@@ -24,7 +23,7 @@ class AssetStore(ABC):
         """Upsert a canonical asset. Insert on first call, update on subsequent."""
 
     @abstractmethod
-    def get(self, canonical_id: str) -> Optional[CanonicalAsset]:
+    def get(self, canonical_id: str) -> CanonicalAsset | None:
         """Return the asset for the given ID, or None if not found."""
 
     @abstractmethod
@@ -47,14 +46,14 @@ class AssetStore(ABC):
 
     # --- convenience lookups (optional O(1) fast path) ---
 
-    def find_by_instance_id(self, instance_id: str) -> Optional[CanonicalAsset]:
+    def find_by_instance_id(self, instance_id: str) -> CanonicalAsset | None:
         """Linear scan default — override for O(1) in production stores."""
         for asset in self.get_all():
             if asset.instance_id == instance_id:
                 return asset
         return None
 
-    def find_by_agent_id(self, agent_id: str) -> Optional[CanonicalAsset]:
+    def find_by_agent_id(self, agent_id: str) -> CanonicalAsset | None:
         """Linear scan default — override for O(1) in production stores."""
         for asset in self.get_all():
             if asset.agent_id == agent_id:

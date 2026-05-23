@@ -87,7 +87,7 @@ class LoaderRegistry:
             return cls()
 
         # Fall back to YAML-configured GenericLoader
-        from .generic_loader import GenericLoader, _DEFAULT_MAPPINGS
+        from .generic_loader import _DEFAULT_MAPPINGS, GenericLoader
         try:
             return GenericLoader.from_config(key, _DEFAULT_MAPPINGS)
         except (KeyError, FileNotFoundError):
@@ -104,8 +104,9 @@ class LoaderRegistry:
         """Return all source names: Python-registered + YAML-configured."""
         sources: set[str] = set(_REGISTRY.keys())
         try:
-            from .generic_loader import _DEFAULT_MAPPINGS
             import yaml
+
+            from .generic_loader import _DEFAULT_MAPPINGS
             config = yaml.safe_load(_DEFAULT_MAPPINGS.read_text())
             sources.update(config.get("sources", {}).keys())
         except Exception:

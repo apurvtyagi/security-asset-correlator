@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -33,13 +32,13 @@ router = APIRouter()
 class VulnerabilityResponse(BaseModel):
     cve_id: str
     canonical_asset_id: str
-    hostname: Optional[str] = None
-    severity: Optional[str] = None
-    cvss3_base: Optional[float] = None
-    title: Optional[str] = None
+    hostname: str | None = None
+    severity: str | None = None
+    cvss3_base: float | None = None
+    title: str | None = None
     sources: list[str] = []
-    first_found: Optional[datetime] = None
-    last_found: Optional[datetime] = None
+    first_found: datetime | None = None
+    last_found: datetime | None = None
     status: str = "open"
     raw_finding_count: int = 0
 
@@ -50,10 +49,10 @@ class VulnerabilityResponse(BaseModel):
 
 @router.get("/", response_model=list[VulnerabilityResponse])
 def list_vulnerabilities(
-    severity: Optional[str] = Query(None, description="critical | high | medium | low | info"),
-    cve_id: Optional[str] = Query(None, description="Filter by exact CVE ID"),
-    status: Optional[str] = Query(None, description="open | potential | fixed"),
-    source: Optional[str] = Query(None, description="Filter: must include this source"),
+    severity: str | None = Query(None, description="critical | high | medium | low | info"),
+    cve_id: str | None = Query(None, description="Filter by exact CVE ID"),
+    status: str | None = Query(None, description="open | potential | fixed"),
+    source: str | None = Query(None, description="Filter: must include this source"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -111,8 +110,8 @@ def vulnerability_summary():
 @router.get("/by-asset/{canonical_id}", response_model=list[VulnerabilityResponse])
 def get_vulnerabilities_for_asset(
     canonical_id: str,
-    severity: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    severity: str | None = Query(None),
+    status: str | None = Query(None),
 ):
     """Return all deduplicated findings for a specific canonical asset."""
     from ..main import get_engine
@@ -137,7 +136,7 @@ def get_vulnerabilities_for_asset(
 # Serialization helper
 # ---------------------------------------------------------------------------
 
-def _to_response(vuln, canonical_id: str, hostname: Optional[str]) -> VulnerabilityResponse:
+def _to_response(vuln, canonical_id: str, hostname: str | None) -> VulnerabilityResponse:
     return VulnerabilityResponse(
         cve_id=vuln.cve_id,
         canonical_asset_id=canonical_id,

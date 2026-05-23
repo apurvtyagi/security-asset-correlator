@@ -21,8 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import JSON, Column, DateTime, Float, String, Text, create_engine, event, select
 from sqlalchemy.orm import DeclarativeBase, Session
@@ -111,8 +110,8 @@ def _row_to_asset(row: AssetRow) -> CanonicalAsset:
         asset_type=row.asset_type or "unknown",
         status=row.status or "active",
         match_confidence=row.match_confidence or 1.0,
-        created_at=row.created_at or datetime.now(timezone.utc),
-        updated_at=row.updated_at or datetime.now(timezone.utc),
+        created_at=row.created_at or datetime.now(UTC),
+        updated_at=row.updated_at or datetime.now(UTC),
         last_seen=row.last_seen,
         ip_addresses=row.ip_addresses or [],
         mac_addresses=row.mac_addresses or [],
@@ -176,7 +175,7 @@ def _serialize_records(records: list[RawAssetRecord]) -> str:
     ])
 
 
-def _parse_dt(value: Optional[str]) -> Optional[datetime]:
+def _parse_dt(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
@@ -214,7 +213,7 @@ class SQLiteStore(AssetStore):
                 session.add(AssetRow(**data))
             session.commit()
 
-    def get(self, canonical_id: str) -> Optional[CanonicalAsset]:
+    def get(self, canonical_id: str) -> CanonicalAsset | None:
         with Session(self._engine) as session:
             row = session.get(AssetRow, canonical_id)
             return _row_to_asset(row) if row else None
@@ -246,14 +245,14 @@ class SQLiteStore(AssetStore):
                     pass
             return result
 
-    def find_by_instance_id(self, instance_id: str) -> Optional[CanonicalAsset]:
+    def find_by_instance_id(self, instance_id: str) -> CanonicalAsset | None:
         with Session(self._engine) as session:
             row = session.execute(
                 select(AssetRow).where(AssetRow.instance_id == instance_id)
             ).scalar_one_or_none()
             return _row_to_asset(row) if row else None
 
-    def find_by_agent_id(self, agent_id: str) -> Optional[CanonicalAsset]:
+    def find_by_agent_id(self, agent_id: str) -> CanonicalAsset | None:
         with Session(self._engine) as session:
             row = session.execute(
                 select(AssetRow).where(AssetRow.agent_id == agent_id)

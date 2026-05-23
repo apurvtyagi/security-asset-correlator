@@ -19,19 +19,18 @@ import argparse
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
-from .matcher import MatchEngine
-from .merger import RecordMerger
-from .models import CanonicalAsset, RawAssetRecord
 from ..resolvers.hostname_resolver import HostnameResolver
 from ..resolvers.ip_resolver import IPResolver
 from ..store.base import AssetStore
 from ..store.memory import InMemoryStore
+from .matcher import MatchEngine
+from .merger import RecordMerger
+from .models import CanonicalAsset, RawAssetRecord
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,7 @@ class CorrelationEngine:
     def __init__(
         self,
         config_dir: Path = _CONFIG_DIR,
-        store: Optional[AssetStore] = None,
+        store: AssetStore | None = None,
     ):
         configs = load_config(config_dir)
 
@@ -147,7 +146,7 @@ class CorrelationEngine:
                     "confidence": match_result.confidence,
                     "match_layer": match_result.match_layer,
                     "matched_on": match_result.matched_on,
-                    "flagged_at": datetime.now(timezone.utc).isoformat(),
+                    "flagged_at": datetime.now(UTC).isoformat(),
                 })
                 logger.warning(
                     "FLAG [%.2f] %s:%s may duplicate canonical:%s",

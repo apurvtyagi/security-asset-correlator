@@ -8,8 +8,7 @@ All modules import from here to avoid circular dependencies.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -18,13 +17,13 @@ class VulnerabilityFinding:
     source: str
     source_finding_id: str
     cve_ids: list[str] = field(default_factory=list)
-    severity: Optional[str] = None          # critical | high | medium | low | info
-    cvss3_base: Optional[float] = None
-    title: Optional[str] = None
-    first_found: Optional[datetime] = None
-    last_found: Optional[datetime] = None
+    severity: str | None = None          # critical | high | medium | low | info
+    cvss3_base: float | None = None
+    title: str | None = None
+    first_found: datetime | None = None
+    last_found: datetime | None = None
     status: str = "open"                    # open | potential | fixed
-    component: Optional[str] = None        # Affected package/component for grouping
+    component: str | None = None        # Affected package/component for grouping
 
 
 @dataclass
@@ -34,12 +33,12 @@ class CanonicalVulnerability:
     Combines findings for the same CVE across all sources.
     """
     cve_id: str
-    severity: Optional[str] = None
-    cvss3_base: Optional[float] = None
-    title: Optional[str] = None
+    severity: str | None = None
+    cvss3_base: float | None = None
+    title: str | None = None
     sources: list[str] = field(default_factory=list)
-    first_found: Optional[datetime] = None
-    last_found: Optional[datetime] = None
+    first_found: datetime | None = None
+    last_found: datetime | None = None
     status: str = "open"
     raw_finding_count: int = 0
 
@@ -52,18 +51,18 @@ class RawAssetRecord:
     """
     source: str                              # "aws" | "edr" | "tenable" | "qualys"
     source_id: str                           # Tool's internal identifier
-    instance_id: Optional[str] = None       # Cloud instance ID (hard identifier)
-    agent_id: Optional[str] = None          # EDR agent UUID (hard identifier)
+    instance_id: str | None = None       # Cloud instance ID (hard identifier)
+    agent_id: str | None = None          # EDR agent UUID (hard identifier)
     mac_addresses: list[str] = field(default_factory=list)
     hostnames: list[str] = field(default_factory=list)   # Normalized by loader
     ip_addresses: list[str] = field(default_factory=list)
-    os_name: Optional[str] = None
-    os_version: Optional[str] = None
-    cloud_region: Optional[str] = None
-    cloud_account_id: Optional[str] = None
+    os_name: str | None = None
+    os_version: str | None = None
+    cloud_region: str | None = None
+    cloud_account_id: str | None = None
     tags: dict = field(default_factory=dict)
-    last_seen: Optional[datetime] = None
-    asset_type: Optional[str] = None
+    last_seen: datetime | None = None
+    asset_type: str | None = None
     vulnerabilities: list[VulnerabilityFinding] = field(default_factory=list)
     raw: dict = field(default_factory=dict) # Original payload for lineage
 
@@ -83,17 +82,17 @@ class CanonicalAsset:
     One CanonicalAsset per real-world entity regardless of how many tools observe it.
     """
     canonical_id: str                        # Stable internal UUID
-    instance_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    hostname: Optional[str] = None
+    instance_id: str | None = None
+    agent_id: str | None = None
+    hostname: str | None = None
     ip_addresses: list[str] = field(default_factory=list)
     mac_addresses: list[str] = field(default_factory=list)
-    os_name: Optional[str] = None
-    os_version: Optional[str] = None
-    cloud_region: Optional[str] = None
-    cloud_account_id: Optional[str] = None
+    os_name: str | None = None
+    os_version: str | None = None
+    cloud_region: str | None = None
+    cloud_account_id: str | None = None
     tags: dict = field(default_factory=dict)
-    last_seen: Optional[datetime] = None
+    last_seen: datetime | None = None
     asset_type: str = "unknown"
 
     # Lifecycle state
@@ -105,5 +104,5 @@ class CanonicalAsset:
     conflicts: list[dict] = field(default_factory=list)     # Field-level disagreements
     vulnerabilities: list[CanonicalVulnerability] = field(default_factory=list)
     match_confidence: float = 1.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

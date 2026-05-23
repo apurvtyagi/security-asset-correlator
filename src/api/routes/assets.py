@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -30,17 +29,17 @@ router = APIRouter()
 
 class AssetResponse(BaseModel):
     canonical_id: str
-    instance_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    hostname: Optional[str] = None
+    instance_id: str | None = None
+    agent_id: str | None = None
+    hostname: str | None = None
     ip_addresses: list[str] = []
     mac_addresses: list[str] = []
-    os_name: Optional[str] = None
-    os_version: Optional[str] = None
-    cloud_region: Optional[str] = None
-    cloud_account_id: Optional[str] = None
+    os_name: str | None = None
+    os_version: str | None = None
+    cloud_region: str | None = None
+    cloud_account_id: str | None = None
     tags: dict = {}
-    last_seen: Optional[datetime] = None
+    last_seen: datetime | None = None
     asset_type: str = "unknown"
     status: str = "active"
     contributing_sources: list[str] = []
@@ -60,10 +59,10 @@ class IngestRequest(BaseModel):
 
 @router.get("/", response_model=list[AssetResponse])
 def list_assets(
-    source: Optional[str] = Query(None, description="Filter by contributing source"),
-    asset_type: Optional[str] = Query(None, description="Filter by asset type"),
-    region: Optional[str] = Query(None, description="Filter by cloud region"),
-    status: Optional[str] = Query(None, description="Filter by lifecycle status"),
+    source: str | None = Query(None, description="Filter by contributing source"),
+    asset_type: str | None = Query(None, description="Filter by asset type"),
+    region: str | None = Query(None, description="Filter by cloud region"),
+    status: str | None = Query(None, description="Filter by lifecycle status"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -124,11 +123,11 @@ def ingest_records(request: IngestRequest):
     Ingest a batch of raw records from a named source and run correlation.
     Returns a summary of the correlation outcome.
     """
-    from ..main import get_engine
     from ...loaders.aws_loader import AWSLoader
     from ...loaders.edr_loader import EDRLoader
-    from ...loaders.tenable_loader import TenableLoader
     from ...loaders.qualys_loader import QualysLoader
+    from ...loaders.tenable_loader import TenableLoader
+    from ..main import get_engine
 
     _loaders = {
         "aws": AWSLoader(),

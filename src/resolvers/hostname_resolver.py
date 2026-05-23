@@ -9,9 +9,8 @@ Normalization rules are driven by canonical_mapping.yaml → hostname.normalizat
 
 from __future__ import annotations
 
-import re
 import logging
-from typing import Optional
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,7 @@ class HostnameResolver:
     Configuration mirrors the normalization block in canonical_mapping.yaml.
     """
 
-    def __init__(self, normalization_config: Optional[dict] = None):
+    def __init__(self, normalization_config: dict | None = None):
         cfg = normalization_config or {}
         self.lowercase: bool = cfg.get("lowercase", True)
         self.strip_suffixes: list[str] = cfg.get("strip_suffixes", _DEFAULT_STRIP_SUFFIXES)

@@ -15,8 +15,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from ..correlator.models import MatchResult
 
@@ -65,8 +64,8 @@ class IPResolver:
         self,
         record_ips: list[str],
         canonical_ips: list[str],
-        canonical_last_seen: Optional[datetime],
-    ) -> Optional[MatchResult]:
+        canonical_last_seen: datetime | None,
+    ) -> MatchResult | None:
         """
         Compute a confidence score for the IP overlap between an incoming record
         and an existing canonical asset.
@@ -99,7 +98,7 @@ class IPResolver:
 
         # Apply staleness decay if the canonical asset hasn't been seen recently
         if canonical_last_seen is not None:
-            age_hours = (datetime.now(timezone.utc) - canonical_last_seen).total_seconds() / 3600
+            age_hours = (datetime.now(UTC) - canonical_last_seen).total_seconds() / 3600
             if age_hours > _STALENESS_THRESHOLD_HOURS:
                 decay = max(_DECAY_FLOOR, 1.0 - (age_hours / _DECAY_WINDOW_HOURS))
                 pre_decay = confidence

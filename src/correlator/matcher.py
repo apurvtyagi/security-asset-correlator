@@ -20,12 +20,10 @@ Final confidence determines outcome:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
 
-from .models import CanonicalAsset, MatchResult, RawAssetRecord
 from ..resolvers.hostname_resolver import HostnameResolver
 from ..resolvers.ip_resolver import IPResolver
+from .models import CanonicalAsset, MatchResult, RawAssetRecord
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +54,13 @@ class MatchEngine:
         self,
         record: RawAssetRecord,
         canonical_store: list[CanonicalAsset],
-    ) -> tuple[Optional[CanonicalAsset], Optional[MatchResult]]:
+    ) -> tuple[CanonicalAsset | None, MatchResult | None]:
         """
         Scan the canonical store for the best match for this record.
         Returns (matched_asset, match_result) or (None, None) if no match found.
         """
-        best_asset: Optional[CanonicalAsset] = None
-        best_result: Optional[MatchResult] = None
+        best_asset: CanonicalAsset | None = None
+        best_result: MatchResult | None = None
 
         for canonical in canonical_store:
             result = self._score_match(record, canonical)
@@ -83,7 +81,7 @@ class MatchEngine:
 
     def _score_match(
         self, record: RawAssetRecord, canonical: CanonicalAsset
-    ) -> Optional[MatchResult]:
+    ) -> MatchResult | None:
         # Layer 1: Hard identifiers
         hard = self._match_hard_ids(record, canonical)
         if hard:
@@ -114,7 +112,7 @@ class MatchEngine:
 
     def _match_hard_ids(
         self, record: RawAssetRecord, canonical: CanonicalAsset
-    ) -> Optional[MatchResult]:
+    ) -> MatchResult | None:
         """Confidence 1.0 for exact ID match; 0.95 for real MAC match."""
         if record.instance_id and canonical.instance_id:
             if record.instance_id == canonical.instance_id:
@@ -146,7 +144,7 @@ class MatchEngine:
 
     def _match_hostname(
         self, record: RawAssetRecord, canonical: CanonicalAsset
-    ) -> Optional[MatchResult]:
+    ) -> MatchResult | None:
         """
         Exact normalized hostname match.
         Confidence 0.85 normally; 0.45 for generic hostnames (ip-10-x-x-x, localhost...).
@@ -168,7 +166,7 @@ class MatchEngine:
 
     def _match_ips(
         self, record: RawAssetRecord, canonical: CanonicalAsset
-    ) -> Optional[MatchResult]:
+    ) -> MatchResult | None:
         """Delegate to IPResolver which handles staleness decay and public/private weighting."""
         if not record.ip_addresses or not canonical.ip_addresses:
             return None
@@ -180,7 +178,7 @@ class MatchEngine:
 
     def _match_metadata(
         self, record: RawAssetRecord, canonical: CanonicalAsset
-    ) -> Optional[MatchResult]:
+    ) -> MatchResult | None:
         """
         OS + region + account correlation. Max 0.50 — never sufficient alone
         to cross the merge threshold, only useful to surface candidates for review.

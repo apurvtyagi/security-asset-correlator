@@ -8,14 +8,14 @@ and multi-canonical store selection.
 
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-from src.correlator.models import CanonicalAsset, RawAssetRecord
+import pytest
+
 from src.correlator.matcher import MatchEngine
+from src.correlator.models import CanonicalAsset, RawAssetRecord
 from src.resolvers.hostname_resolver import HostnameResolver
 from src.resolvers.ip_resolver import IPResolver
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -48,7 +48,7 @@ def prod_api_canonical() -> CanonicalAsset:
         os_name="Amazon Linux 2023",
         cloud_region="us-east-1",
         cloud_account_id="123456789012",
-        last_seen=datetime.now(timezone.utc),
+        last_seen=datetime.now(UTC),
     )
 
 
@@ -155,7 +155,7 @@ class TestHostnameMatching:
         canonical = CanonicalAsset(
             canonical_id="canon-generic",
             hostname="ip-10-0-4-22",
-            last_seen=datetime.now(timezone.utc),
+            last_seen=datetime.now(UTC),
         )
         record = RawAssetRecord(
             source="tenable", source_id="t-003",
@@ -185,7 +185,7 @@ class TestIPMatching:
         result = resolver.score_ip_overlap(
             ["52.14.100.200"],
             ["52.14.100.200"],
-            datetime.now(timezone.utc),
+            datetime.now(UTC),
         )
         assert result is not None
         assert abs(result.confidence - 0.75) < 0.01
@@ -196,7 +196,7 @@ class TestIPMatching:
         result = resolver.score_ip_overlap(
             ["10.0.4.22"],
             ["10.0.4.22"],
-            datetime.now(timezone.utc),
+            datetime.now(UTC),
         )
         assert result is not None
         assert abs(result.confidence - 0.60) < 0.01
@@ -206,11 +206,11 @@ class TestIPMatching:
         resolver = IPResolver()
         fresh_result = resolver.score_ip_overlap(
             ["10.0.4.22"], ["10.0.4.22"],
-            datetime.now(timezone.utc),
+            datetime.now(UTC),
         )
         stale_result = resolver.score_ip_overlap(
             ["10.0.4.22"], ["10.0.4.22"],
-            datetime.now(timezone.utc) - timedelta(days=20),
+            datetime.now(UTC) - timedelta(days=20),
         )
         assert stale_result is not None and fresh_result is not None
         assert stale_result.confidence < fresh_result.confidence

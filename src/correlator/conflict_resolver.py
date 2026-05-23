@@ -10,7 +10,7 @@ the authority ranks used to decide, and the resolution taken. No silent drops.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .models import CanonicalAsset
@@ -70,7 +70,7 @@ class ConflictResolver:
             "incoming_authority_rank": incoming_rank,
             "resolved_value": resolved_value,
             "resolution": resolution,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         })
 
         logger.debug(

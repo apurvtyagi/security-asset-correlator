@@ -7,12 +7,12 @@ Verifies authority rank ordering, tie-breaking, unknown sources, and log structu
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
-from datetime import datetime, timezone
 
-from src.correlator.models import CanonicalAsset
 from src.correlator.conflict_resolver import ConflictResolver
-
+from src.correlator.models import CanonicalAsset
 
 # ---------------------------------------------------------------------------
 # Fixtures
