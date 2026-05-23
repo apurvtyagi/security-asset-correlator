@@ -53,7 +53,7 @@ app = FastAPI(
         "runs layered matching; merges duplicates into canonical records; "
         "and deduplicates vulnerability findings across sources."
     ),
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
