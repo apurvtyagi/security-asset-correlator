@@ -7,14 +7,13 @@ name = "security-asset-correlator"
 version = "1.0.0"
 description = "Cross-tool canonical asset correlation engine for security operations"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Apurv Tyagi", email = "tyagiapurv@gmail.com" }]
 requires-python = ">=3.11"
 keywords = ["security", "asset", "correlation", "vulnerability", "cmdb", "edr", "aws"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Information Technology",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -53,6 +52,9 @@ Documentation = "https://github.com/apurvtyagi/security-asset-correlator/tree/ma
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
+
+[tool.setuptools.package-data]
+"src.config" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

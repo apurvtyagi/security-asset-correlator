@@ -1,0 +1,170 @@
+# source_mappings.yaml
+#
+# Config-driven field mappings for every security tool source.
+# Adding a new tool requires only a new block here — no Python files.
+#
+# Field rule shapes:
+#   canonical_field: "SourceField"                — direct string lookup
+#   canonical_field: ["Field1", "Field2"]         — collect non-empty values into a list
+#   canonical_field:
+#     field: "SourceField"                        — single field (with optional transform)
+#     transform: transform_name
+#   canonical_field:
+#     pick: ["Field1", "Field2"]                  — pick multiple fields into a list, optional transform
+#     transform: transform_name
+#   canonical_field:
+#     value: "literal"                            — hardcoded static value
+#
+# Available transforms (defined in src/loaders/generic_loader.py):
+#   iso_datetime       — ISO 8601 string → datetime (handles Z suffix, missing tz)
+#   ensure_list        — scalar or list → list (filters None/empty)
+#   first_of_list      — list → first non-empty string element
+#   dedup_list         — list → deduplicated list (preserves order)
+#   aws_platform_to_os — "windows"|"" → "Windows"|"Linux"
+#   az_to_region       — "us-east-1a" → "us-east-1"
+#   aws_tags_list      — [{Key, Value}] → {key: value}
+#   edr_tags           — list of strings OR dict → {str: True} or passthrough dict
+#   mac_to_list        — single MAC string → [normalized lowercase:colon]
+#   tenable_tags       — [{category, value}] → {category: value}
+#   qualys_tags        — {TAG: [{NAME, ID}]} → {name: id}
+#   tenable_vulns      — Tenable findings array → [VulnerabilityFinding]
+#   qualys_vulns       — Qualys DETECTIONS dict → [VulnerabilityFinding]
+
+sources:
+
+  # -----------------------------------------------------------------------
+  # AWS EC2 / SSM inventory
+  # Source API: DescribeInstances, SSM InventoryData
+  # -----------------------------------------------------------------------
+  aws:
+    source_id_field: InstanceId
+    asset_type: server
+    fields:
+      instance_id: InstanceId
+      hostnames:
+        pick: [PrivateDnsName, PublicDnsName]
+      ip_addresses:
+        pick: [PrivateIpAddress, PublicIpAddress]
+      os_name:
+        field: Platform
+        transform: aws_platform_to_os
+      cloud_region:
+        field: Placement.AvailabilityZone
+        transform: az_to_region
+      cloud_account_id: OwnerId
+      tags:
+        field: Tags
+        transform: aws_tags_list
+      last_seen:
+        field: LaunchTime
+        transform: iso_datetime
+
+  # -----------------------------------------------------------------------
+  # EDR — CrowdStrike Falcon / SentinelOne device records
+  # Source API: /devices/entities/devices/v2
+  # -----------------------------------------------------------------------
+  edr:
+    source_id_field: device_id
+    asset_type: workstation
+    fields:
+      agent_id: device_id
+      instance_id: instance_id
+      hostnames:
+        pick: [hostname]
+      ip_addresses:
+        pick: [local_ip, external_ip]
+        transform: dedup_list
+      mac_addresses:
+        field: mac_address
+        transform: mac_to_list
+      # EDR exposes os version string under "os_version" — map to canonical os_name
+      os_name: os_version
+      cloud_region: region
+      cloud_account_id: service_provider_account_id
+      tags:
+        field: tags
+        transform: edr_tags
+      last_seen:
+        field: last_seen
+        transform: iso_datetime
+
+  # -----------------------------------------------------------------------
+  # Tenable.io — asset + vulnerability records
+  # Source API: /workbenches/assets, /workbenches/assets/{id}/vulnerabilities
+  # -----------------------------------------------------------------------
+  tenable:
+    source_id_field: id
+    asset_type: server
+    fields:
+      instance_id: aws_ec2_instance_id
+      agent_id: agent_id
+      hostnames:
+        field: fqdn
+        transform: ensure_list
+      ip_addresses:
+        field: ipv4
+        transform: ensure_list
+      os_name:
+        field: operating_system
+        transform: first_of_list
+      cloud_region: aws_region
+      cloud_account_id: aws_account_id
+      tags:
+        field: tags
+        transform: tenable_tags
+      last_seen:
+        field: last_scan_time
+        transform: iso_datetime
+    vulnerabilities:
+      field: vulnerabilities
+      transform: tenable_vulns
+
+  # -----------------------------------------------------------------------
+  # Qualys VMDR — host + detection records
+  # Source API: /api/2.0/fo/asset/host/?action=list
+  # Note: Qualys XML-to-JSON may produce single dicts instead of lists for
+  # DETECTION and CVE_LIST — the qualys_vulns transform handles both shapes.
+  # -----------------------------------------------------------------------
+  qualys:
+    source_id_field: ID
+    asset_type: server
+    fields:
+      instance_id: EC2_INSTANCE_ID
+      hostnames:
+        pick: [DNS, NETBIOS]
+      ip_addresses:
+        pick: [IP]
+      os_name: OS
+      cloud_account_id: EC2_ACCOUNT_ID
+      cloud_region: EC2_REGION
+      tags:
+        field: TAGS
+        transform: qualys_tags
+      last_seen:
+        field: LAST_SCAN_DATETIME
+        transform: iso_datetime
+    vulnerabilities:
+      field: DETECTIONS
+      transform: qualys_vulns
+
+  # -----------------------------------------------------------------------
+  # Example: Microsoft Defender for Endpoint
+  # Uncomment and fill in once the MDE loader is needed.
+  # Source API: /api/machines
+  # -----------------------------------------------------------------------
+  # mde:
+  #   source_id_field: id
+  #   asset_type: workstation
+  #   fields:
+  #     agent_id: id
+  #     hostnames:
+  #       pick: [computerDnsName]
+  #     ip_addresses:
+  #       field: lastIpAddress
+  #       transform: ensure_list
+  #     os_name: osPlatform
+  #     os_version: osVersion
+  #     cloud_region: rbacGroupName
+  #     last_seen:
+  #       field: lastSeen
+  #       transform: iso_datetime

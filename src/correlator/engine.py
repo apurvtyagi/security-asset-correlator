@@ -34,8 +34,8 @@ from .models import CanonicalAsset, RawAssetRecord
 
 logger = logging.getLogger(__name__)
 
-# Default config directory relative to this file's package root
-_CONFIG_DIR = Path(__file__).parents[2] / "config"
+# src/config/ — bundled with the package so it works after pip install
+_CONFIG_DIR = Path(__file__).parent.parent / "config"
 
 
 def load_config(config_dir: Path = _CONFIG_DIR) -> dict:

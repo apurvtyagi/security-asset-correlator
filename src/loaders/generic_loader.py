@@ -31,7 +31,7 @@ from .base_loader import BaseLoader
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_MAPPINGS = Path(__file__).parents[2] / "config" / "source_mappings.yaml"
+_DEFAULT_MAPPINGS = Path(__file__).parent.parent / "config" / "source_mappings.yaml"
 
 # ---------------------------------------------------------------------------
 # Transform registry

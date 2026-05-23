@@ -1,0 +1,58 @@
+# match_thresholds.yaml
+# Tunable thresholds controlling when records are merged, flagged, or treated as new.
+#
+# Tuning guide:
+# - Lower merge_threshold in stable environments with consistent naming conventions
+# - Raise flag_threshold in high-churn environments to reduce false-positive review queue
+# - Adjust layer_scores.hostname if your environment has inconsistent hostname hygiene
+# - Lower layer_scores.ip.private_ip_match if your environment uses heavy NAT/CGNAT
+
+version: "1.0"
+
+thresholds:
+  # Confidence >= merge_threshold → merge into existing canonical asset
+  merge_threshold: 0.70
+
+  # Confidence in [flag_threshold, merge_threshold) → create new asset, flag for human review
+  flag_threshold: 0.50
+
+  # Confidence < flag_threshold → brand-new canonical asset (no relationship inferred)
+
+# Confidence values assigned when a match is found at each layer
+layer_scores:
+  hard_id:
+    instance_id: 1.00         # Cloud instance ID — unambiguous
+    agent_id: 1.00            # EDR agent UUID — unambiguous
+    mac_address_real: 0.95    # Physical/cloud NIC MAC
+    mac_address_virtual: 0.30 # VMware/KVM MACs are not unique per machine
+
+  hostname:
+    exact_normalized_match: 0.85   # After stripping suffixes + lowercasing
+    generic_hostname_match: 0.45   # ip-10-x-x-x, localhost, ubuntu, etc.
+
+  ip:
+    public_ip_match: 0.75          # Public IPs are more uniquely identifying
+    private_ip_match: 0.60         # RFC-1918 — shared across VPCs if NAT is present
+    staleness_decay_floor: 0.50    # Minimum multiplier after staleness decay
+    staleness_threshold_hours: 48  # Age above which decay begins
+    decay_window_hours: 720        # 30 days to reach floor
+
+  metadata:
+    os_match: 0.20           # OS family match (rhel_family, windows, etc.)
+    region_match: 0.15       # Same cloud region
+    account_id_match: 0.15   # Same cloud account
+    # Max metadata score = 0.50 — never sufficient alone to cross merge_threshold
+
+# Weights for combining hostname and IP scores when neither alone exceeds merge_threshold
+combination_weights:
+  hostname: 0.60
+  ip: 0.40
+  # Example: hostname=0.85 → 0.51, public_ip=0.75 → 0.30, combined=0.81 ≥ 0.70 → merge
+
+# Asset lifecycle state transition thresholds
+lifecycle:
+  possibly_offline_hours: 24    # Hours without any source reporting → possibly_offline
+  offline_hours: 72             # Hours without any source reporting → offline
+  archive_days: 90              # Days offline before archiving (servers)
+  archive_days_ephemeral: 7     # Days before archiving containers/functions
+  terminated_retention_days: 30 # Days to retain terminated assets for finding attribution

@@ -1,0 +1,68 @@
+# source_confidence.yaml
+# Per-source trust weights for probabilistic scoring.
+# These modulate how much a source's data is trusted during correlation
+# and are separate from the hard authority_rank in canonical_mapping.yaml.
+#
+# authority_rank   → deterministic: "who wins a direct conflict on this field"
+# source_trust     → probabilistic: "how reliable is this source's data in general"
+
+version: "1.0"
+
+# Global source trust scores [0.0, 1.0]
+source_trust:
+  aws:
+    overall: 0.95
+    notes: "Cloud API is ground truth for infrastructure identity"
+  edr:
+    overall: 0.90
+    notes: "Agent-based; highest fidelity for runtime data"
+  tenable:
+    overall: 0.75
+    notes: "Scanner-based; point-in-time snapshots, authenticated scans preferred"
+  qualys:
+    overall: 0.70
+    notes: "Scanner-based; may have NIC/NAT ambiguity, no agent"
+  cmdb:
+    overall: 0.50
+    notes: "Often stale; useful for enrichment but not identity"
+
+# Per-field trust weights: how much to trust each source for a given field.
+# Used to weight combined confidence scores in fuzzy matching.
+# These are distinct from authority_rank — a source can be trusted for a field
+# without being authoritative enough to overwrite another source's value.
+field_trust:
+  hostname:
+    edr: 0.95      # OS-reported; definitively what the machine calls itself
+    aws: 0.85      # DNS-derived; reliable in well-managed environments
+    tenable: 0.60  # Reverse DNS; may be stale
+    qualys: 0.60
+
+  ip_addresses:
+    aws: 0.90      # Live VPC assignment
+    edr: 0.85      # Runtime observed
+    tenable: 0.65  # Scan-time observation
+    qualys: 0.60
+
+  os_name:
+    edr: 0.95      # Agent reads from OS directly
+    tenable: 0.80  # Authenticated scan
+    qualys: 0.75
+    aws: 0.70      # Platform tag; not always set
+
+  cloud_region:
+    aws: 1.00      # Authoritative — region is a hard infrastructure property
+    azure: 1.00
+    gcp: 1.00
+    edr: 0.50      # EDR may infer region from cloud metadata API
+
+  instance_id:
+    aws: 1.00      # Authoritative
+    edr: 0.90      # CrowdStrike reads EC2 instance metadata accurately
+    tenable: 0.80  # Reported during authenticated scan
+    qualys: 0.50   # May be absent or inferred
+
+  mac_addresses:
+    edr: 0.95
+    aws: 0.85
+    tenable: 0.60
+    qualys: 0.50
