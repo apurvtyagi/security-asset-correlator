@@ -101,8 +101,16 @@ class CanonicalAsset:
     # Lineage and audit trail
     contributing_sources: list[str] = field(default_factory=list)
     source_records: list[RawAssetRecord] = field(default_factory=list)
-    conflicts: list[dict] = field(default_factory=list)     # Field-level disagreements
+    conflicts: list[dict] = field(default_factory=list)
     vulnerabilities: list[CanonicalVulnerability] = field(default_factory=list)
     match_confidence: float = 1.0
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    # Risk scoring
+    risk_score: float = 0.0          # 0.0–10.0 composite risk score
+    risk_severity: str = "low"       # critical | high | medium | low
+    risk_factors: dict = field(default_factory=dict)  # score breakdown
+
+    # Drift tracking — field changes detected between ingestions
+    drift_events: list[dict] = field(default_factory=list)

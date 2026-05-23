@@ -65,6 +65,7 @@ class RecordMerger:
                 setattr(canonical, field_name, incoming_value)
                 continue
             if current_value != incoming_value:
+                self._record_drift(canonical, field_name, current_value, incoming_value, record.source)
                 resolved, _ = self.conflict_resolver.resolve(
                     canonical, field_name,
                     current_value, current_source,
@@ -78,6 +79,7 @@ class RecordMerger:
             if canonical.hostname is None:
                 canonical.hostname = incoming_hostname
             elif canonical.hostname != incoming_hostname:
+                self._record_drift(canonical, "hostname", canonical.hostname, incoming_hostname, record.source)
                 resolved, _ = self.conflict_resolver.resolve(
                     canonical, "hostname",
                     canonical.hostname, current_source,
@@ -160,6 +162,22 @@ class RecordMerger:
                     )
 
         canonical.vulnerabilities = list(by_cve.values())
+
+    def _record_drift(
+        self,
+        canonical: CanonicalAsset,
+        field: str,
+        old_value: object,
+        new_value: object,
+        source: str,
+    ) -> None:
+        canonical.drift_events.append({
+            "field": field,
+            "old_value": str(old_value),
+            "new_value": str(new_value),
+            "source": source,
+            "detected_at": datetime.now(UTC).isoformat(),
+        })
 
     def _dominant_source(self, canonical: CanonicalAsset) -> str:
         """Return the source that most recently contributed to this canonical asset."""

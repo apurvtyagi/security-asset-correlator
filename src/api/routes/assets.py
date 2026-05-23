@@ -46,6 +46,17 @@ class AssetResponse(BaseModel):
     match_confidence: float = 1.0
     conflict_count: int = 0
     vulnerability_count: int = 0
+    risk_score: float = 0.0
+    risk_severity: str = "low"
+    risk_factors: dict = {}
+
+
+class RiskResponse(BaseModel):
+    canonical_id: str
+    risk_score: float
+    risk_severity: str
+    risk_factors: dict
+    vulnerability_count: int
 
 
 class IngestRequest(BaseModel):
@@ -103,6 +114,36 @@ def get_asset(canonical_id: str):
     raise HTTPException(status_code=404, detail=f"Asset not found: {canonical_id}")
 
 
+@router.get("/{canonical_id}/risk", response_model=RiskResponse)
+def get_asset_risk(canonical_id: str):
+    """Return the composite risk score and component breakdown for a canonical asset."""
+    from ..main import get_engine
+    for asset in get_engine().canonical_store:
+        if asset.canonical_id == canonical_id:
+            return RiskResponse(
+                canonical_id=canonical_id,
+                risk_score=asset.risk_score,
+                risk_severity=asset.risk_severity,
+                risk_factors=asset.risk_factors,
+                vulnerability_count=len(asset.vulnerabilities),
+            )
+    raise HTTPException(status_code=404, detail=f"Asset not found: {canonical_id}")
+
+
+@router.get("/{canonical_id}/drift")
+def get_asset_drift(canonical_id: str):
+    """Return the drift event log — field changes detected between ingestion runs."""
+    from ..main import get_engine
+    for asset in get_engine().canonical_store:
+        if asset.canonical_id == canonical_id:
+            return {
+                "canonical_id": canonical_id,
+                "drift_event_count": len(asset.drift_events),
+                "drift_events": asset.drift_events,
+            }
+    raise HTTPException(status_code=404, detail=f"Asset not found: {canonical_id}")
+
+
 @router.get("/{canonical_id}/conflicts")
 def get_asset_conflicts(canonical_id: str):
     """Return the full field-level conflict audit log for a canonical asset."""
@@ -123,24 +164,17 @@ def ingest_records(request: IngestRequest):
     Ingest a batch of raw records from a named source and run correlation.
     Returns a summary of the correlation outcome.
     """
-    from ...loaders.aws_loader import AWSLoader
-    from ...loaders.edr_loader import EDRLoader
-    from ...loaders.qualys_loader import QualysLoader
-    from ...loaders.tenable_loader import TenableLoader
+    from ...loaders.base_loader import LoaderRegistry
     from ..main import get_engine
 
-    _loaders = {
-        "aws": AWSLoader(),
-        "edr": EDRLoader(),
-        "tenable": TenableLoader(),
-        "qualys": QualysLoader(),
-    }
-
-    loader = _loaders.get(request.source.lower())
-    if loader is None:
+    source_key = request.source.lower()
+    try:
+        loader = LoaderRegistry.get(source_key)
+    except KeyError:
+        available = LoaderRegistry.available()
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown source '{request.source}'. Valid sources: {list(_loaders)}",
+            detail=f"Unknown source '{request.source}'. Available sources: {available}",
         )
 
     engine = get_engine()
@@ -179,4 +213,7 @@ def _to_response(asset) -> AssetResponse:
         match_confidence=asset.match_confidence,
         conflict_count=len(asset.conflicts),
         vulnerability_count=len(asset.vulnerabilities),
+        risk_score=asset.risk_score,
+        risk_severity=asset.risk_severity,
+        risk_factors=asset.risk_factors,
     )

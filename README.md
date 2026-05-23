@@ -25,6 +25,9 @@ Most security programs don't have a vulnerability problem. They have an asset id
 - [Design Principles](#design-principles)
 - [Storage Backends](#storage-backends)
 - [Coverage Gap Analysis](#coverage-gap-analysis)
+- [Risk Scoring](#risk-scoring)
+- [Drift Detection](#drift-detection)
+- [Prometheus Metrics](#prometheus-metrics)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -219,6 +222,9 @@ docker-compose up
 | `GET` | `/api/v1/coverage/no-edr` | Assets without EDR agent coverage |
 | `GET` | `/api/v1/coverage/no-scanner` | Assets never scanned for vulnerabilities |
 | `GET` | `/api/v1/coverage/shadow-it` | Possible unmanaged / shadow-IT devices |
+| `GET` | `/api/v1/assets/{id}/risk` | Composite risk score + factor breakdown |
+| `GET` | `/api/v1/assets/{id}/drift` | Field-change drift event log |
+| `GET` | `/metrics` | Prometheus text-format scrape endpoint |
 
 ---
 
@@ -240,7 +246,21 @@ pytest tests/
 
 ## Adding a New Security Tool
 
-The loader layer is fully config-driven. Adding support for a new tool — Lacework, Wiz, Microsoft Defender, Prisma Cloud, or anything else — requires only a YAML block and no new Python files.
+The loader layer is fully config-driven. Nine sources ship out of the box:
+
+| Source key | Tool |
+|------------|------|
+| `aws` | AWS EC2 / SSM inventory |
+| `edr` | CrowdStrike Falcon / SentinelOne |
+| `tenable` | Tenable.io |
+| `qualys` | Qualys VMDR |
+| `mde` | Microsoft Defender for Endpoint |
+| `wiz` | Wiz cloud asset inventory |
+| `lacework` | Lacework host inventory |
+| `prisma` | Prisma Cloud (Twistlock) |
+| `snyk` | Snyk code / container vulnerabilities |
+
+Adding any other tool requires only a YAML block — no new Python files.
 
 **Step 1 — Add a block to `config/source_mappings.yaml`**
 
@@ -309,8 +329,14 @@ mytool:
 | `mac_to_list` | single MAC string | `["aa:bb:cc:dd:ee:ff"]` |
 | `edr_tags` | list of strings or dict | `{str: True}` or passthrough |
 | `tenable_tags` | `[{category, value}]` | `{category: value}` |
+| `qualys_tags` | `{TAG: [{NAME, ID}]}` | `{name: id}` |
+| `kv_tags` | `[{key, value}]` | `{key: value}` (Wiz, Lacework, Prisma) |
 | `tenable_vulns` | Tenable findings array | `[VulnerabilityFinding]` |
 | `qualys_vulns` | Qualys `DETECTIONS` dict | `[VulnerabilityFinding]` |
+| `mde_vulns` | MDE vulnerabilities list | `[VulnerabilityFinding]` |
+| `wiz_vulns` | Wiz vulnerability nodes | `[VulnerabilityFinding]` |
+| `prisma_vulns` | Prisma Cloud vuln array | `[VulnerabilityFinding]` |
+| `snyk_vulns` | Snyk issues list | `[VulnerabilityFinding]` |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for a full walkthrough.
 
@@ -393,6 +419,96 @@ GET /api/v1/coverage/
 - **no_edr** — assets not enrolled in any endpoint agent (CrowdStrike, SentinelOne)
 - **no_scanner** — assets that have never been scanned by Tenable or Qualys
 - **shadow_it** — assets seen only by scanners with no cloud inventory or EDR record — possible unmanaged devices
+
+---
+
+## Risk Scoring
+
+Every canonical asset is automatically scored on a 0–10 CVSS-aligned composite scale after each ingestion. The score is built from four weighted components:
+
+| Component | Max | Signals |
+|-----------|-----|---------|
+| Vulnerabilities | 5.0 | Worst CVE severity + count bonus |
+| Exposure | 2.5 | Public IP, server/unknown asset type |
+| Coverage gaps | 1.5 | No EDR agent, no vulnerability scanner |
+| Environment | 1.0 | `prod`, `production`, `tier-1`, `critical` tags |
+
+**Severity buckets:** critical ≥ 9.0 · high ≥ 7.0 · medium ≥ 4.0 · low < 4.0
+
+Risk fields are surfaced on every asset in `GET /api/v1/assets/` and as a dedicated endpoint:
+
+```bash
+GET /api/v1/assets/{canonical_id}/risk
+```
+```json
+{
+  "canonical_id": "...",
+  "risk_score": 8.5,
+  "risk_severity": "high",
+  "risk_factors": {
+    "vulnerabilities": 5.0,
+    "exposure": 2.0,
+    "coverage_gap": 1.0,
+    "environment": 0.5
+  },
+  "vulnerability_count": 7
+}
+```
+
+To tune weights, subclass `RiskScorer` and override any of the four component methods.
+
+---
+
+## Drift Detection
+
+The engine detects field drift — cases where a re-ingested record changes a previously known field value — and appends a structured event to the asset's `drift_events` log.
+
+```bash
+GET /api/v1/assets/{canonical_id}/drift
+```
+```json
+{
+  "canonical_id": "...",
+  "drift_event_count": 2,
+  "drift_events": [
+    {
+      "field": "os_name",
+      "old_value": "Amazon Linux 2",
+      "new_value": "Amazon Linux 2023",
+      "source": "aws",
+      "detected_at": "2024-06-01T12:34:56+00:00"
+    }
+  ]
+}
+```
+
+Drift events are distinct from conflicts (cross-source disagreements at the same instant). Drift tracks the same field changing over time, giving you a temporal change history without needing to diff raw snapshots.
+
+---
+
+## Prometheus Metrics
+
+Scrape live asset-store statistics in standard Prometheus text format:
+
+```bash
+GET /metrics
+```
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `asset_correlator_canonical_assets_total` | gauge | Total canonical assets in store |
+| `asset_correlator_flagged_assets_total` | gauge | Assets pending human review |
+| `asset_correlator_vulnerabilities_total` | gauge | Open deduplicated CVEs |
+| `asset_correlator_assets_by_severity{level}` | gauge | Assets bucketed by risk severity |
+| `asset_correlator_assets_no_edr_total` | gauge | Assets with no EDR coverage |
+| `asset_correlator_assets_no_scanner_total` | gauge | Assets never scanned |
+| `asset_correlator_shadow_it_total` | gauge | Possible shadow-IT devices |
+
+The endpoint works without `prometheus-client` installed (falls back to hand-written text format). Install it for the full SDK:
+
+```bash
+pip install security-asset-correlator  # prometheus-client is included
+```
 
 ---
 

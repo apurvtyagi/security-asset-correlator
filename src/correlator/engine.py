@@ -31,6 +31,7 @@ from ..store.memory import InMemoryStore
 from .matcher import MatchEngine
 from .merger import RecordMerger
 from .models import CanonicalAsset, RawAssetRecord
+from .risk_scorer import RiskScorer
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,7 @@ class CorrelationEngine:
             ip_resolver=IPResolver(),
         )
         self.merger = RecordMerger(authority_config)
+        self.risk_scorer = RiskScorer()
         self.merge_threshold: float = thresholds["merge_threshold"]
         self.flag_threshold: float = thresholds["flag_threshold"]
 
@@ -135,10 +137,12 @@ class CorrelationEngine:
                     canonical.canonical_id, match_result.match_layer,
                 )
                 self.merger.merge(canonical, record)
+                self.risk_scorer.score(canonical)
                 self._store.save(canonical)
 
             elif match_result and match_result.confidence >= self.flag_threshold:
                 new = self._create_canonical(record, match_result.confidence)
+                self.risk_scorer.score(new)
                 self._store.save(new)
                 self._store.add_flagged({
                     "new_canonical_id": new.canonical_id,
@@ -156,6 +160,7 @@ class CorrelationEngine:
 
             else:
                 new = self._create_canonical(record, 1.0)
+                self.risk_scorer.score(new)
                 self._store.save(new)
                 logger.debug(
                     "NEW canonical:%s from %s:%s",

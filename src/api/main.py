@@ -27,7 +27,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..correlator.engine import CorrelationEngine
-from .routes import assets, coverage, vulnerabilities
+from .routes import assets, coverage, metrics, vulnerabilities
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,7 @@ app.add_middleware(
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 app.include_router(vulnerabilities.router, prefix="/api/v1/vulnerabilities", tags=["vulnerabilities"])
 app.include_router(coverage.router, prefix="/api/v1/coverage", tags=["coverage"])
+app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
 
 
 @app.get("/health", tags=["health"])

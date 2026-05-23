@@ -239,6 +239,126 @@ def _qualys_vulns(value: Any, source: str = "qualys") -> list[VulnerabilityFindi
     return findings
 
 
+@transform("mde_vulns")
+def _mde_vulns(value: Any, source: str = "mde") -> list[VulnerabilityFinding]:
+    """MDE /machines/{id}/vulnerabilities response — list or {value: [...]} wrapper."""
+    if isinstance(value, dict):
+        value = value.get("value", [])
+    if not isinstance(value, list):
+        return []
+    findings = []
+    for v in value:
+        cve_id = v.get("id") or v.get("name") or ""
+        if not cve_id:
+            continue
+        findings.append(VulnerabilityFinding(
+            source=source,
+            source_finding_id=cve_id,
+            cve_ids=[cve_id] if cve_id.startswith("CVE-") else [],
+            severity=(v.get("severity") or "info").lower(),
+            cvss3_base=v.get("cvssV3"),
+            title=v.get("description"),
+            first_found=_iso_datetime(v.get("publishedOn")),
+            last_found=_iso_datetime(v.get("updatedOn")),
+            status="open",
+        ))
+    return findings
+
+
+@transform("kv_tags")
+def _kv_tags(value: Any) -> dict:
+    """[{key, value}] → {key: value}. Handles Wiz, Lacework, and Prisma Cloud tag shapes."""
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, list):
+        return {}
+    result = {}
+    for entry in value:
+        if not isinstance(entry, dict):
+            continue
+        k = entry.get("key") or entry.get("Key") or entry.get("name")
+        v = entry.get("value") or entry.get("Value") or ""
+        if k:
+            result[str(k)] = str(v)
+    return result
+
+
+@transform("wiz_vulns")
+def _wiz_vulns(value: Any, source: str = "wiz") -> list[VulnerabilityFinding]:
+    """Wiz vulnerability nodes — severities are uppercase in the API."""
+    if not isinstance(value, list):
+        return []
+    findings = []
+    for v in value:
+        cve_id = v.get("id") or v.get("name") or ""
+        raw_status = (v.get("status") or "open").lower()
+        findings.append(VulnerabilityFinding(
+            source=source,
+            source_finding_id=cve_id,
+            cve_ids=[cve_id] if cve_id.startswith("CVE-") else [],
+            severity=(v.get("severity") or "info").lower(),
+            cvss3_base=v.get("score"),
+            title=v.get("name"),
+            first_found=_iso_datetime(v.get("firstDetectedAt")),
+            last_found=_iso_datetime(v.get("lastDetectedAt")),
+            status="open" if raw_status in ("open", "active") else "potential",
+        ))
+    return findings
+
+
+@transform("prisma_vulns")
+def _prisma_vulns(value: Any, source: str = "prisma") -> list[VulnerabilityFinding]:
+    """Prisma Cloud (Twistlock) host vulnerability array."""
+    if not isinstance(value, list):
+        return []
+    findings = []
+    for v in value:
+        cve_id = v.get("cve") or ""
+        raw_status = (v.get("status") or "affected").lower()
+        findings.append(VulnerabilityFinding(
+            source=source,
+            source_finding_id=cve_id,
+            cve_ids=[cve_id] if cve_id.startswith("CVE-") else [],
+            severity=(v.get("severity") or "info").lower(),
+            cvss3_base=v.get("cvss"),
+            title=v.get("title"),
+            first_found=_iso_datetime(v.get("publishedDate")),
+            last_found=_iso_datetime(v.get("discovered")),
+            status="open" if raw_status in ("affected", "open") else "potential",
+        ))
+    return findings
+
+
+@transform("snyk_vulns")
+def _snyk_vulns(value: Any, source: str = "snyk") -> list[VulnerabilityFinding]:
+    """Snyk issues list — each issue may carry multiple CVEs under attributes.problems."""
+    if not isinstance(value, list):
+        return []
+    findings = []
+    for issue in value:
+        attrs = issue.get("attributes", issue)
+        problems = attrs.get("problems", [])
+        cve_ids = [
+            p["id"] for p in problems
+            if isinstance(p, dict) and p.get("id", "").startswith("CVE-")
+        ]
+        raw_status = (attrs.get("status") or "open").lower()
+        score_block = attrs.get("score") or {}
+        cvss = score_block.get("value") if isinstance(score_block, dict) else None
+        findings.append(VulnerabilityFinding(
+            source=source,
+            source_finding_id=issue.get("id", ""),
+            cve_ids=cve_ids,
+            severity=(attrs.get("severity") or "info").lower(),
+            cvss3_base=cvss,
+            title=attrs.get("title"),
+            first_found=_iso_datetime(attrs.get("createdAt")),
+            last_found=_iso_datetime(attrs.get("updatedAt")),
+            status="open" if raw_status in ("open", "active") else "potential",
+        ))
+    return findings
+
+
 def _qualys_cve_list(cve_list: Any) -> list[str]:
     """CVE_LIST.CVE can be a string, list, or nested dict in Qualys output."""
     if isinstance(cve_list, str):

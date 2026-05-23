@@ -148,23 +148,136 @@ sources:
       transform: qualys_vulns
 
   # -----------------------------------------------------------------------
-  # Example: Microsoft Defender for Endpoint
-  # Uncomment and fill in once the MDE loader is needed.
-  # Source API: /api/machines
+  # Microsoft Defender for Endpoint (MDE)
+  # Source API: GET /api/machines
+  # Vulnerabilities: GET /api/machines/{id}/vulnerabilities (attach as "vulnerabilities" key)
   # -----------------------------------------------------------------------
-  # mde:
-  #   source_id_field: id
-  #   asset_type: workstation
-  #   fields:
-  #     agent_id: id
-  #     hostnames:
-  #       pick: [computerDnsName]
-  #     ip_addresses:
-  #       field: lastIpAddress
-  #       transform: ensure_list
-  #     os_name: osPlatform
-  #     os_version: osVersion
-  #     cloud_region: rbacGroupName
-  #     last_seen:
-  #       field: lastSeen
-  #       transform: iso_datetime
+  mde:
+    source_id_field: id
+    asset_type: workstation
+    fields:
+      agent_id: id
+      hostnames:
+        pick: [computerDnsName]
+      ip_addresses:
+        field: lastIpAddress
+        transform: ensure_list
+      os_name: osPlatform
+      os_version: osVersion
+      last_seen:
+        field: lastSeen
+        transform: iso_datetime
+    vulnerabilities:
+      field: vulnerabilities
+      transform: mde_vulns
+
+  # -----------------------------------------------------------------------
+  # Wiz — cloud asset inventory and vulnerability findings
+  # Source API: POST /api/v1/graphql (assetInventory + vulnerabilities query)
+  # Attach vulnerabilities as "vulnerabilities.nodes" under each asset.
+  # -----------------------------------------------------------------------
+  wiz:
+    source_id_field: id
+    asset_type: server
+    fields:
+      instance_id: nativeId
+      hostnames:
+        pick: [name]
+      ip_addresses:
+        field: ipAddresses
+        transform: ensure_list
+      os_name:
+        field: osDetails.osName
+      os_version:
+        field: osDetails.osVersion
+      cloud_region: region
+      cloud_account_id:
+        field: subscription.externalId
+      tags:
+        field: tags
+        transform: kv_tags
+      last_seen:
+        field: lastSeenAt
+        transform: iso_datetime
+    vulnerabilities:
+      field: vulnerabilities.nodes
+      transform: wiz_vulns
+
+  # -----------------------------------------------------------------------
+  # Lacework — host inventory and vulnerability reports
+  # Source API: GET /api/v2/Entities/Machines  (pass items from data[])
+  # -----------------------------------------------------------------------
+  lacework:
+    source_id_field: mid
+    asset_type: server
+    fields:
+      instance_id: cloudInstanceId
+      hostnames:
+        pick: [hostname]
+      ip_addresses:
+        pick: [primaryIpAddr, externalIpAddr]
+        transform: dedup_list
+      os_name: osName
+      os_version: osVersion
+      cloud_account_id: accountAlias
+      cloud_region: region
+      tags:
+        field: tags
+        transform: kv_tags
+      last_seen:
+        field: lastEvaluationTime
+        transform: iso_datetime
+
+  # -----------------------------------------------------------------------
+  # Prisma Cloud (formerly Twistlock) — host / container inventory
+  # Source API: GET /api/v1/hosts
+  # -----------------------------------------------------------------------
+  prisma:
+    source_id_field: _id
+    asset_type: server
+    fields:
+      instance_id:
+        field: cloudMetadata.resourceID
+      hostnames:
+        pick: [hostname]
+      ip_addresses:
+        field: ipv4Addresses
+        transform: ensure_list
+      os_name:
+        field: os.distro
+      os_version:
+        field: os.version
+      cloud_region:
+        field: cloudMetadata.region
+      cloud_account_id:
+        field: cloudMetadata.accountID
+      tags:
+        field: labels
+        transform: kv_tags
+      last_seen:
+        field: scanTime
+        transform: iso_datetime
+    vulnerabilities:
+      field: vulnerabilities
+      transform: prisma_vulns
+
+  # -----------------------------------------------------------------------
+  # Snyk — code / container / IaC vulnerability findings
+  # Source API: GET /rest/orgs/{org_id}/targets  (attach matching issues as "issues")
+  # -----------------------------------------------------------------------
+  snyk:
+    source_id_field: id
+    asset_type: workstation
+    fields:
+      agent_id: id
+      hostnames:
+        field: attributes.displayName
+        transform: ensure_list
+      cloud_account_id:
+        field: relationships.org.data.id
+      last_seen:
+        field: attributes.createdAt
+        transform: iso_datetime
+    vulnerabilities:
+      field: issues
+      transform: snyk_vulns
