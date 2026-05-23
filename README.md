@@ -12,6 +12,25 @@ Most security programs don't have a vulnerability problem. They have an asset id
 
 ---
 
+## Contents
+
+- [The Problem](#the-problem)
+- [What This Does](#what-this-does)
+- [Architecture](#architecture)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [API Endpoints](#api-endpoints)
+- [Testing](#testing)
+- [Adding a New Security Tool](#adding-a-new-security-tool)
+- [Configuration](#configuration)
+- [Design Principles](#design-principles)
+- [Storage Backends](#storage-backends)
+- [Coverage Gap Analysis](#coverage-gap-analysis)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## The Problem
 
 | Tool | How It Knows Your Asset |
@@ -220,9 +239,9 @@ pytest tests/
 
 ---
 
-## Adding a new security tool
+## Adding a New Security Tool
 
-The loader layer is fully config-driven. Adding support for a new tool — Lacework, Wiz, Microsoft Defender, Prisma Cloud, or anything else — takes two steps and no new Python files.
+The loader layer is fully config-driven. Adding support for a new tool — Lacework, Wiz, Microsoft Defender, Prisma Cloud, or anything else — requires only a YAML block and no new Python files.
 
 **Step 1 — Add a block to `config/source_mappings.yaml`**
 
@@ -323,7 +342,7 @@ To adjust who wins a hostname conflict between EDR and AWS, change `canonical_fi
 
 ---
 
-## Storage backends
+## Storage Backends
 
 The engine uses a pluggable `AssetStore` interface with two built-in backends:
 
@@ -355,7 +374,7 @@ store = PostgreSQLStore("postgresql://user:pass@host/dbname")
 
 ---
 
-## Coverage gap analysis
+## Coverage Gap Analysis
 
 After ingesting records, call the coverage report to find blind spots:
 
@@ -380,7 +399,7 @@ GET /api/v1/coverage/
 
 ## Contributing
 
-PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide, including how to add a new source loader in ~30 minutes.
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide, including how to add a new source loader in ~15 minutes.
 
 Issues for new source loaders, edge case coverage, and confidence model improvements especially appreciated.
 
