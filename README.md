@@ -1,9 +1,8 @@
 # security-asset-correlator
 
 [![CI](https://github.com/apurvtyagi/security-asset-correlator/actions/workflows/ci.yml/badge.svg)](https://github.com/apurvtyagi/security-asset-correlator/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/security-asset-correlator)](https://pypi.org/project/security-asset-correlator/)
-[![Python](https://img.shields.io/pypi/pyversions/security-asset-correlator)](https://pypi.org/project/security-asset-correlator/)
-[![codecov](https://codecov.io/gh/apurvtyagi/security-asset-correlator/branch/main/graph/badge.svg)](https://codecov.io/gh/apurvtyagi/security-asset-correlator)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/apurvtyagi/security-asset-correlator/releases)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Cross-tool canonical asset correlation engine for security operations.
